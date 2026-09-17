@@ -1,0 +1,62 @@
+{
+  "name": "mach-learning-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Nền tảng tự học và giảng dạy tiếng Anh cho giáo viên, học sinh và người tự học.",
+  "workspaces": [
+    "frontend",
+    "backend/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "predev": "npm run build -w @mach/contracts",
+    "dev": "concurrently --kill-others-on-fail --names api,web --prefix-colors cyan,magenta \"npm run dev -w @mach/api\" \"npm run dev -w @mach/web\"",
+    "dev:all": "npm run build -w @mach/contracts && concurrently --kill-others-on-fail --names api,web,worker --prefix-colors cyan,magenta,yellow \"npm run dev -w @mach/api\" \"npm run dev -w @mach/web\" \"npm run dev -w @mach/worker\"",
+    "build": "npm run build -w @mach/contracts && npm run build -w @mach/ui && npm run build -w @mach/api && npm run build -w @mach/worker && npm run build -w @mach/web",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "pretest": "npm run build -w @mach/contracts",
+    "test": "npm run test --workspaces --if-present",
+    "test:watch": "npm run test:watch --workspaces --if-present",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "db:generate": "prisma generate --schema backend/prisma/schema.prisma",
+    "db:validate": "prisma validate --schema backend/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema backend/prisma/schema.prisma",
+    "db:deploy": "prisma migrate deploy --schema backend/prisma/schema.prisma",
+    "db:seed": "prisma db seed --schema backend/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema backend/prisma/schema.prisma",
+    "services:up": "docker compose up -d postgres redis",
+    "services:down": "docker compose down"
+  },
+  "dependencies": {
+    "@prisma/client": "6.12.0",
+    "bcryptjs": "3.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.35.0",
+    "@types/node": "24.3.1",
+    "concurrently": "9.2.4",
+    "eslint": "9.35.0",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "eslint-plugin-react-refresh": "0.4.20",
+    "globals": "16.3.0",
+    "postcss": "8.5.28",
+    "prettier": "3.6.2",
+    "prisma": "6.12.0",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.42.0"
+  },
+  "prisma": {
+    "seed": "tsx backend/prisma/seed.ts"
+  },
+  "overrides": {
+    "postcss": "8.5.28"
+  }
+}

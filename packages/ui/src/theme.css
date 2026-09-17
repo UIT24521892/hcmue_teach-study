@@ -1,0 +1,52 @@
+:root {
+  color-scheme: light;
+  --color-canvas: 38 45% 96%;
+  --color-surface: 38 55% 99%;
+  --color-surface-raised: 35 28% 93%;
+  --color-ink: 228 29% 14%;
+  --color-ink-muted: 226 10% 41%;
+  --color-line: 35 18% 83%;
+  --color-accent: 14 86% 65%;
+  --color-accent-strong: 10 79% 57%;
+  --color-accent-ink: 228 31% 12%;
+  --color-focus: 222 68% 50%;
+  --color-positive: 205 70% 43%;
+  --color-warning: 39 88% 57%;
+  --color-tree: 27 42% 42%;
+  --color-logo-line: #fffaf0;
+  --shadow-lift: 0 10px 28px hsl(228 29% 14% / 0.1);
+  --shadow-panel: 0 1px 0 hsl(228 29% 14% / 0.05), 0 14px 40px hsl(228 29% 14% / 0.06);
+  --radius-panel: 1.5rem;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: 229 25% 10%;
+  --color-surface: 228 23% 13%;
+  --color-surface-raised: 226 18% 18%;
+  --color-ink: 38 39% 94%;
+  --color-ink-muted: 34 12% 69%;
+  --color-line: 228 14% 25%;
+  --color-accent: 15 82% 65%;
+  --color-accent-strong: 15 88% 70%;
+  --color-accent-ink: 229 28% 10%;
+  --color-focus: 218 78% 67%;
+  --color-positive: 204 75% 62%;
+  --color-warning: 40 91% 62%;
+  --color-tree: 28 48% 60%;
+  --color-logo-line: #171c2a;
+  --shadow-lift: 0 10px 30px hsl(0 0% 0% / 0.28);
+  --shadow-panel: 0 1px 0 hsl(0 0% 100% / 0.03), 0 18px 48px hsl(0 0% 0% / 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

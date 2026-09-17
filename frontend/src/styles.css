@@ -1,0 +1,72 @@
+@import "@mach/ui/theme.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    @apply bg-canvas text-ink antialiased;
+  }
+
+  body {
+    @apply m-0 min-w-80 bg-canvas font-sans text-ink;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply text-balance;
+  }
+  p {
+    @apply text-pretty;
+  }
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  ::selection {
+    @apply bg-accent/35 text-ink;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-panel border border-line/80 bg-surface shadow-panel;
+  }
+
+  .eyebrow {
+    @apply text-[0.68rem] font-bold uppercase tracking-[0.2em] text-ink-muted;
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
+  }
+
+  .page-title {
+    @apply font-display text-4xl font-semibold leading-tight sm:text-5xl;
+  }
+  .field {
+    @apply focus-ring min-h-11 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted;
+  }
+  .field-label {
+    @apply mb-2 block text-sm font-semibold;
+  }
+  .icon-button {
+    @apply focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-muted hover:bg-surface-raised hover:text-ink;
+  }
+  .dialog-panel {
+    @apply fixed left-1/2 top-1/2 z-50 max-h-[85dvh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-panel border border-line bg-surface p-6 shadow-panel sm:p-8;
+  }
+}

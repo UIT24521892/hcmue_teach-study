@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mach}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mach_local_only}
+      POSTGRES_DB: ${POSTGRES_DB:-mach_learning}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - mach_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - mach_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mach_postgres_data:
+  mach_redis_data:

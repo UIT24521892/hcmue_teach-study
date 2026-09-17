@@ -1,0 +1,7 @@
+{
+  "extends": "../config/typescript/react.json",
+  "compilerOptions": {
+    "types": ["react"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}
