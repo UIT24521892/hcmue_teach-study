@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { StudyTree } from "../../components/study-tree";
 import { Badge, LinkButton, TextLink } from "../../components/page-ui";
 import { useDemo } from "../demo/context";
+import { useEffectiveRole } from "../auth/use-effective-role";
 import { calculateStreak, dateKey, shiftDate } from "../../lib/dates";
 import { quizzes } from "../demo/fixtures";
 
 export function DashboardPage() {
   const { data } = useDemo();
+  const role = useEffectiveRole();
   const dates = [...data.notes.map((n) => n.date), ...data.attempts.map((a) => a.date)];
   const streak = calculateStreak(dates);
   const sessions = data.notes.length + data.attempts.length;
@@ -36,13 +38,13 @@ export function DashboardPage() {
             <br className="hidden sm:block" /> Mỗi bước nhỏ đều đang làm nên một thay đổi lớn.
           </p>
         </div>
-        <LinkButton to={data.role === "student" ? "/practice" : "/documents?upload=1"}>
-          {data.role === "student" ? (
+        <LinkButton to={role === "student" ? "/practice" : "/documents?upload=1"}>
+          {role === "student" ? (
             <GraduationCap className="size-4" />
           ) : (
             <FileUp className="size-4" />
           )}
-          {data.role === "student" ? "Bắt đầu luyện tập" : "Tải tài liệu mới"}
+          {role === "student" ? "Bắt đầu luyện tập" : "Tải tài liệu mới"}
         </LinkButton>
       </section>
       <section aria-label="Chỉ số học tập" className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">

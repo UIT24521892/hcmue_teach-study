@@ -7,12 +7,18 @@ import { Button } from "@mach/ui";
 import { Badge, EmptyState, LinkButton, PageHeading } from "../../components/page-ui";
 import { cn } from "../../lib/cn";
 import { dateKey } from "../../lib/dates";
+import { useAuth } from "../auth/auth-context";
+import { useEffectiveRole } from "../auth/use-effective-role";
 import { useDemo } from "../demo/context";
+import { QuizLibrary } from "../quizzes/quiz-library";
 import { quizzes, scoreQuiz, type Quiz } from "../demo/fixtures";
 
 export function PracticePage() {
   const [filter, setFilter] = useState("Tất cả");
   const { data } = useDemo();
+  const auth = useAuth();
+  const role = useEffectiveRole();
+  const canAuthorQuizzes = auth.status === "authenticated" && role !== "student";
   return (
     <>
       <PageHeading
@@ -20,6 +26,10 @@ export function PracticePage() {
         title="Học một chút. Tiến một bước."
         description="Chọn một chủ đề vừa sức, dành một khoảng thời gian tập trung và học từ từng câu trả lời."
       />
+      {canAuthorQuizzes && <QuizLibrary />}
+      {canAuthorQuizzes && (
+        <h2 className="mb-4 font-display text-2xl font-semibold">Bài luyện mẫu trên thiết bị</h2>
+      )}
       <div className="mb-6 flex flex-wrap gap-2" aria-label="Lọc bài luyện">
         {["Tất cả", "Reading", "Vocabulary"].map((category) => (
           <Button

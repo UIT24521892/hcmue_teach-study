@@ -12,15 +12,17 @@ import {
 } from "../../components/page-ui";
 import { usePagination } from "../../lib/use-pagination";
 import { useDemo } from "../demo/context";
+import { useEffectiveRole } from "../auth/use-effective-role";
 
 export function ClassesPage() {
   const { data, update } = useDemo();
+  const role = useEffectiveRole();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const { pageItems, page, pageCount, setPage } = usePagination(data.classes);
-  if (data.role === "self_learner")
+  if (role === "self_learner")
     return (
       <EmptyState
         title="Không gian tự học của bạn"
@@ -31,17 +33,17 @@ export function ClassesPage() {
   return (
     <>
       <PageHeading
-        eyebrow={data.role === "teacher" ? "Không gian giảng dạy" : "Cùng học, cùng tiến bộ"}
+        eyebrow={role === "teacher" ? "Không gian giảng dạy" : "Cùng học, cùng tiến bộ"}
         title="Mỗi lớp học, một hành trình."
         description={
-          data.role === "teacher"
+          role === "teacher"
             ? "Một góc nhìn gọn gàng về các lớp, tài liệu và nhịp học của học sinh."
             : "Theo dõi lớp và bài luyện của bạn trong không gian chung."
         }
         action={
           <Button onClick={() => setOpen(true)}>
             <Plus className="size-4" />
-            {data.role === "teacher" ? "Tạo lớp mới" : "Tham gia lớp"}
+            {role === "teacher" ? "Tạo lớp mới" : "Tham gia lớp"}
           </Button>
         }
       />
@@ -88,13 +90,13 @@ export function ClassesPage() {
       <Modal
         open={open}
         onOpenChange={setOpen}
-        title={data.role === "teacher" ? "Tạo lớp học" : "Tham gia lớp bằng mã"}
+        title={role === "teacher" ? "Tạo lớp học" : "Tham gia lớp bằng mã"}
         description="Chế độ demo — chưa tạo lớp hay membership trên máy chủ."
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (data.role === "student") {
+            if (role === "student") {
               setError(
                 "Chưa kết nối API tham gia lớp. Bạn có thể mở hai lớp mẫu để xem giao diện.",
               );
@@ -123,7 +125,7 @@ export function ClassesPage() {
           }}
         >
           <label htmlFor="class-name" className="field-label">
-            {data.role === "teacher" ? "Tên lớp" : "Mã lớp"}
+            {role === "teacher" ? "Tên lớp" : "Mã lớp"}
           </label>
           <input
             id="class-name"
@@ -135,11 +137,11 @@ export function ClassesPage() {
               setError("");
             }}
             placeholder={
-              data.role === "teacher" ? "Ví dụ: Tiếng Anh 11A1" : "Nhập mã giáo viên cung cấp"
+              role === "teacher" ? "Ví dụ: Tiếng Anh 11A1" : "Nhập mã giáo viên cung cấp"
             }
             required
           />
-          {data.role === "teacher" && (
+          {role === "teacher" && (
             <>
               <label htmlFor="class-description" className="field-label mt-4">
                 Mô tả ngắn
@@ -158,7 +160,7 @@ export function ClassesPage() {
             {error}
           </p>
           <Button type="submit" className="mt-5 w-full">
-            {data.role === "teacher" ? "Lưu lớp demo" : "Kiểm tra mã"}
+            {role === "teacher" ? "Lưu lớp demo" : "Kiểm tra mã"}
           </Button>
         </form>
       </Modal>
@@ -169,9 +171,10 @@ export function ClassesPage() {
 export function ClassDetailPage() {
   const { classId } = useParams();
   const { data } = useDemo();
+  const role = useEffectiveRole();
   const [tab, setTab] = useState("assignments");
   const classroom = data.classes.find((c) => c.id === classId);
-  if (!classroom || data.role === "self_learner")
+  if (!classroom || role === "self_learner")
     return (
       <EmptyState
         title="Không tìm thấy lớp"
@@ -196,7 +199,7 @@ export function ClassDetailPage() {
       <div className="mb-6 flex gap-2">
         {[
           { id: "assignments", label: "Bài được giao" },
-          ...(data.role === "teacher" ? [{ id: "members", label: "Học sinh & tiến độ" }] : []),
+          ...(role === "teacher" ? [{ id: "members", label: "Học sinh & tiến độ" }] : []),
         ].map((item) => (
           <Button
             key={item.id}
@@ -225,7 +228,7 @@ export function ClassDetailPage() {
             viên.
           </p>
           <LinkButton to="/practice/small-habits">
-            {data.role === "teacher" ? "Xem thử bài luyện" : "Bắt đầu làm bài"}
+            {role === "teacher" ? "Xem thử bài luyện" : "Bắt đầu làm bài"}
           </LinkButton>
         </article>
       ) : (

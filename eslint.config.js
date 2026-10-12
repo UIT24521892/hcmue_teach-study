@@ -28,6 +28,13 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-explicit-any": "error",
+      // Mirrors the TypeScript compiler, which already ignores parameters and
+      // variables prefixed with `_` (e.g. Express error handlers that must keep
+      // a 4-argument signature).
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
     },
   },
   {

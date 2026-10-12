@@ -155,14 +155,22 @@ Quy ước quan trọng:
 
 Request và response phải được validate bằng schema dùng chung. Lỗi trả về một cấu trúc thống nhất gồm `code`, `message`, `details?`, `requestId`.
 
-Các endpoint mới ở trên là thiết kế dự kiến, chưa phải API đã triển khai. Contract sẽ chỉ rõ HTTP method, pagination, scope, idempotency/version và các mã lỗi khi triển khai từng module.
+Trạng thái triển khai thực tế của các endpoint theo checkbox từng giai đoạn bên dưới. Module tài liệu/câu hỏi Giai đoạn 2 đã có contract, pagination, owner scope và optimistic version; endpoint của các giai đoạn sau vẫn là thiết kế dự kiến cho tới khi checkbox tương ứng hoàn tất.
 
 ## 7. Các giai đoạn triển khai
+
+**Trạng thái thực thi hiện tại — 12/10/2026:** theo quyết định của người dùng ngày 12/10/2026,
+**Giai đoạn 2A — Chatbot** được **tạm hoãn** (vẫn thuộc MVP, chưa bắt đầu) để ưu tiên các nghiệp vụ
+quiz/lớp học phục vụ một buổi dạy hoàn chỉnh. Giai đoạn đang thực hiện là **Giai đoạn 3 — Quiz và
+kết quả**. Giai đoạn 2 đã hoàn tất ngày 20/09/2026. Giai đoạn 1 chưa được tuyên bố hoàn tất:
+khôi phục mật khẩu và profile mutation được tạm hoãn, còn ownership/membership policy cùng
+ma trận chống truy cập chéo sẽ được hoàn thiện theo từng tài nguyên thật ở các giai đoạn sau.
+Các mục tạm hoãn vẫn thuộc phạm vi MVP và phải được xử lý trước nghiệm thu cuối.
 
 ### Giai đoạn 0 — Nền móng
 
 - [x] Khởi tạo monorepo, scripts dev/build/test/lint/typecheck.
-- [ ] Thiết lập PostgreSQL, Prisma migration và seed dữ liệu ba vai trò. *(Đã tạo Compose, schema, migration và seed; schema validate thành công. Cần bật Docker daemon để chạy migration/seed thực tế.)*
+- [x] Thiết lập PostgreSQL, Prisma migration và seed dữ liệu ba vai trò. *(Đã chạy thật ngày 18/09/2026 trên Docker Desktop: `services:up` bật `postgres:17-alpine` + `redis:8-alpine` đều healthy, `db:validate` hợp lệ, `db:generate`, `db:deploy` apply `20260916000000_initialize_users`, `db:seed` tạo đúng 3 tài khoản teacher/student/self_learner với timezone `Asia/Ho_Chi_Minh`. Seed dùng `upsert` nên chạy lại không tạo bản ghi trùng. Đã kiểm tra trực tiếp trong bảng `users` và `_prisma_migrations`.)*
 - [x] Thiết lập biến môi trường có schema validation và `.env.example` không chứa secret.
 - [x] Xây design tokens, typography, màu sắc, spacing, light/dark theme và app shell responsive.
 - [x] Thiết lập CI chạy lint, typecheck, unit test và build.
@@ -171,33 +179,53 @@ Các endpoint mới ở trên là thiết kế dự kiến, chưa phải API đ�
 
 ### Giai đoạn 1 — Auth và RBAC
 
+**Trạng thái:** TẠM DỪNG MỘT PHẦN — nền tảng auth/session và route guard đã dùng được;
+không dùng trạng thái này để đánh dấu các checkbox còn thiếu là hoàn thành.
+
 **Lát cắt UI ưu tiên theo yêu cầu ngày 17/09/2026:** xây trước giao diện và điều hướng các trang trong sidebar, không chờ Auth/API. Tất cả dữ liệu demo phải được gắn nhãn; lưu cục bộ không thay thế backend, RBAC hay dữ liệu thật. Chi tiết và cách kiểm thử nằm trong `docs/frontend-ui.md`.
 
 - Dashboard, thư viện tài liệu, danh sách/chi tiết lớp, bài luyện/phòng làm bài/kết quả, ghi chú theo lịch, tiến độ, cài đặt và trang không tìm thấy đã có route riêng.
 - Cây SVG phát triển theo buổi học: 1 buổi = 1 lá, 10 buổi = 1 cành. Mỗi cây chứa 100 lá; mốc vượt 100 được biểu diễn bằng cây mới cùng bộ đếm cây đã hoàn thiện. Streak tính theo ngày riêng với tổng số lá.
-- Tương tác cục bộ: tìm/lọc tài liệu, kiểm tra file và lưu metadata, duyệt trạng thái tài liệu mẫu, tạo lớp nháp, ghi chú/tag/tự đánh giá, quiz có timer/bản nháp/kết quả, thay đổi hồ sơ/vai trò demo. Không gửi file, không gọi AI, không cấp membership, không chấm điểm thi thật.
-- Không đánh dấu hoàn thành các checkbox backend/MVP dưới đây chỉ vì đã có UI. Đăng nhập/đăng ký, question editor, upload/job AI, giao bài và dữ liệu thật vẫn thuộc các giai đoạn tương ứng.
-- Kiểm chứng UI cục bộ: 40 frontend tests, 20 E2E trên Chrome (desktop/mobile, light/dark), cùng lint/typecheck/build/format đều qua; tổng unit/integration toàn repo là 47 tests. CI đã thêm bước E2E nhưng chưa có kết quả chạy trên GitHub trong phiên này.
+- Tương tác cục bộ: anonymous/student vẫn có tài liệu mẫu; lớp nháp, ghi chú/tag/tự đánh giá, quiz có timer/bản nháp/kết quả và vai trò preview vẫn lưu trên thiết bị. Teacher/self-learner đã đăng nhập dùng upload/job/question editor thật từ Giai đoạn 2; chưa cấp membership hay chấm/giao bài thật.
+- Không đánh dấu hoàn thành checkbox backend/MVP chỉ vì có UI. Auth và document pipeline được đánh dấu theo kiểm chứng riêng ở Giai đoạn 1–2; lớp, quiz thật, notes backend và giao bài vẫn thuộc các giai đoạn tương ứng.
+- Kiểm chứng local ngày 19/09/2026 sau khi harden auth/role: 54 frontend tests + 53 API tests + 13 contract tests = **120 unit/integration tests xanh**; 28 E2E trên Chrome cho desktop-light/mobile-dark; `lint`, `typecheck`, `build`, `format:check` và `git diff --check` đều qua. API test chỉ chấp nhận PostgreSQL database tên chính xác `mach_test` qua `TEST_DATABASE_URL` hoặc fallback local cố định, không kế thừa `DATABASE_URL`; database development vẫn giữ đủ 3 tài khoản seed sau suite. CI đã có bước E2E nhưng chưa chạy workflow GitHub trong phiên này.
 
-- [ ] Đăng ký theo vai trò hợp lệ, đăng nhập, refresh rotation và đăng xuất.
-- [ ] Middleware xác thực, policy ownership/membership và route guard frontend.
-- [ ] Profile tối thiểu; sidebar/menu thay đổi theo vai trò.
-- [ ] Test matrix quyền của teacher/student/self-learner.
+- [x] Đăng ký theo vai trò hợp lệ, đăng nhập, refresh rotation và đăng xuất. *(Triển khai ngày 18/09/2026: `POST /api/v1/auth/register|login|refresh|logout`, `GET /api/v1/auth/me`; access token JWT HS256 ngắn hạn + refresh token xoay vòng lưu dạng SHA-256 hash trong cookie `httpOnly`/`sameSite=lax`. Rotation dùng compare-and-set trong transaction để chỉ một request đồng thời thắng; xung đột gần trả mã retryable mà không xoá cookie thắng, còn replay cũ thu hồi toàn bộ family. `admin` bị chặn ở schema đăng ký công khai. Có rate limit riêng cho nhóm endpoint credential và refresh.)*
+- [ ] Khôi phục mật khẩu cơ bản. *(Tạm hoãn theo quyết định ngày 19/09/2026 để ưu tiên Giai đoạn 2; không bị loại khỏi MVP. Khi quay lại: request endpoint phải trả cùng một phản hồi dù email tồn tại hay không; reset token ngẫu nhiên, chỉ lưu hash, có hạn dùng và chỉ dùng một lần; local/CI dùng mail adapter mock. Đổi mật khẩu thành công phải thu hồi mọi refresh-token family của tài khoản. UI cần đủ trạng thái gửi yêu cầu, đã gửi, đặt lại thành công và lỗi/hết hạn.)*
+- [ ] Middleware xác thực, policy ownership/membership và route guard frontend. *(Đã có `authenticate` (xác minh token rồi đọc lại user trong DB để role và soft delete có hiệu lực ngay), `requireRole`, route guard frontend và ownership policy cho metadata tài liệu. Membership/policy của lớp và các tài nguyên chưa triển khai vẫn còn mở.)*
+- [ ] Profile tối thiểu; sidebar/menu thay đổi theo vai trò. *(Đã có `/account` chỉ đọc từ API, route guard và menu/feature demo dùng vai trò xác thực nhất quán. Chỉnh tên/timezone và profile mutation phía server vẫn chưa triển khai.)*
+- [ ] Test matrix quyền của teacher/student/self-learner. *(Đã có ma trận middleware: đúng role 200, sai role 403, thiếu phiên 401, tài khoản soft delete 401; upload tài liệu kiểm tra teacher/self-learner được phép, student bị chặn và truy cập chéo hai teacher trả 404. Ma trận đầy đủ tiếp tục bổ sung theo từng tài nguyên.)*
 
 **Hoàn tất khi:** người dùng chỉ truy cập được route và dữ liệu đúng quyền; test chống truy cập chéo tài khoản chạy xanh.
 
 ### Giai đoạn 2 — Document pipeline và AI
 
-- [ ] Upload theo multipart với giới hạn loại/kích thước, tên file an toàn và checksum.
-- [ ] Storage adapter, parser PDF/DOCX/TXT/image và giới hạn độ dài nội dung.
-- [ ] Job queue có retry/backoff/idempotency và hiển thị tiến trình bằng polling.
-- [ ] AI provider interface, mock provider, structured output validation và rate limit/quota.
-- [ ] Màn hình thư viện tài liệu, trạng thái xử lý, lỗi và retry.
-- [ ] Trình duyệt/sửa/duyệt câu hỏi cho teacher; self-learner có thể dùng ngay sau khi xác nhận.
+**Trạng thái:** HOÀN TẤT ngày 20/09/2026. Upload trả job nền ngay; PDF/DOCX/TXT/ảnh
+đi qua extractor dùng chung, output mock AI được validate trước khi ghi, và teacher/self-learner
+có thể polling, retry, sửa/duyệt/loại câu hỏi trên thư viện thật. Production bắt buộc BullMQ/Redis;
+local dùng inline dispatcher không block request. Policy owner và IDOR được kiểm tra ở mọi endpoint.
+
+- [x] Upload theo multipart với giới hạn loại/kích thước, tên file an toàn và checksum. *(Đã có `POST /api/v1/documents` cho teacher/self-learner; allowlist PDF/DOCX/TXT/JPEG/PNG/WebP, đối chiếu extension + MIME khai báo + MIME thực, TXT UTF-8, giới hạn mặc định 10 MiB qua env, tên file chống path/control character và SHA-256. Metadata scope theo owner; `GET /api/v1/documents/:id` trả 404 khi khác owner và không lộ storage key/path. Migration append-only đã apply trên `mach_learning` và `mach_test`; test abuse/role/IDOR xanh.)*
+- [x] Storage adapter, parser PDF/DOCX/TXT/image và giới hạn độ dài nội dung. *(Local storage private có server-generated key, exclusive write và mode `0600`; PDF.js, Mammoth, strict UTF-8 và Tesseract OCR với dữ liệu tiếng Anh đóng gói chạy sau interface dùng chung. Giới hạn ký tự cấu hình được kiểm tra và lỗi parser trả mã an toàn, không log nội dung.)*
+- [x] Job queue có retry/backoff/idempotency và hiển thị tiến trình bằng polling. *(Upload tự tạo `DocumentJob`; unique active key chống enqueue trùng, attempt/progress/lỗi nằm trong PostgreSQL. BullMQ production có exponential backoff hữu hạn, inline dev dùng cùng processor và không block response; worker đóng tài nguyên khi shutdown. API owner-scoped trả job để frontend polling 1,5 giây và retry lỗi.)*
+- [x] AI provider interface, mock provider, structured output validation và rate limit/quota. *(`QuestionGenerationProvider` tách riêng; mock local xác định tạo đủ ba dạng câu hỏi, output qua Zod và transaction trước khi lưu. Có limiter AI và quota rolling 24 giờ theo owner được giữ bằng transaction serializable, nên request đồng thời không vượt hạn mức.)*
+- [x] Màn hình thư viện tài liệu, trạng thái xử lý, lỗi và retry. *(Teacher/self-learner đã đăng nhập dùng API thật với loading/empty/error/progress/retry; anonymous và student vẫn thấy demo có nhãn. UI tái sử dụng shell/token, responsive, dark mode và không tuyên bố mock AI là provider thật.)*
+- [x] Trình duyệt/sửa/duyệt câu hỏi cho teacher; self-learner có thể dùng ngay sau khi xác nhận. *(Câu hỏi bắt đầu `pending_review`; sửa nội dung/đáp án/giải thích/độ khó, duyệt hoặc loại đều owner-scoped, kiểm tra schema, dùng optimistic version và ghi `QuestionRevision`. Chưa publish/giao lớp ở giai đoạn này.)*
+
+Kiểm chứng local ngày 20/09/2026: migration append-only `20260920163000_add_document_pipeline`
+đã apply trên `mach_learning` và `mach_test`; **155 unit/integration tests xanh** (56 frontend,
+71 API, 4 worker, 16 contracts, 8 document-pipeline), trong đó có parser PDF/DOCX/TXT,
+OCR thật dùng model local, bốn loại tài liệu qua processor, background completion, quota, optimistic
+version và IDOR. **30 E2E** qua trên desktop-light/mobile-dark; test màn hình tài liệu tự chuyển
+cả light/dark và đã chạy lại riêng sau tinh chỉnh. `lint`, `typecheck`, `build`, `format:check` và
+`git diff --check` đều qua. Smoke BullMQ/Redis thật: upload TXT trả `queued`, worker hoàn tất attempt
+1/progress 100 và tạo đúng `multiple_choice`, `fill_blank`, `true_false`; tiến trình và file tạm đã dừng/xóa.
 
 **Hoàn tất khi:** tài liệu mẫu của bốn loại đi hết pipeline và tạo bộ câu hỏi hợp lệ mà không block request.
 
 ### Giai đoạn 2A — Chatbot cá nhân và hỏi–đáp theo tài liệu (ưu tiên mới)
+
+**Trạng thái:** TẠM HOÃN từ 12/10/2026 theo yêu cầu người dùng; quay lại sau khi Giai đoạn 3 và lát cắt lớp học/giao bài của Giai đoạn 5 chạy được. Không xóa khỏi MVP.
 
 **Phụ thuộc:** Auth/RBAC và tài liệu đã extract ở giai đoạn 1–2. Triển khai trước cho teacher/self-learner với tài liệu sở hữu; mở rộng tài liệu lớp ở giai đoạn 5A, không dùng dữ liệu giả để vượt kiểm tra quyền.
 
@@ -214,7 +242,9 @@ Các endpoint mới ở trên là thiết kế dự kiến, chưa phải API đ�
 
 ### Giai đoạn 3 — Quiz và kết quả
 
-- [ ] Tạo/publish quiz từ câu hỏi đã duyệt.
+**Trạng thái:** ĐANG THỰC HIỆN từ 12/10/2026.
+
+- [x] Tạo/publish quiz từ câu hỏi đã duyệt. *(Triển khai ngày 12/10/2026: `GET/POST /api/v1/quizzes`, `GET/PATCH /quizzes/:id`, `POST /quizzes/:id/publish|archive` cho teacher/self-learner, scope theo owner, optimistic version. Nháp chỉ nhận câu hỏi `approved` của chính owner; công bố kiểm tra lại trạng thái duyệt trong transaction và cố định nội dung vào `quiz_questions.snapshot`, nên sửa/xóa câu hỏi gốc không đổi quiz đã công bố (ADR 0005). Migration `20261012153905_add_quizzes`. UI “Quiz của bạn” trong Bài luyện: soạn/sắp thứ tự/sửa nháp, công bố có xác nhận, xem nội dung đã cố định, lưu trữ; loading/empty/error, desktop-light và mobile-dark đã kiểm tra. 8 integration test API (IDOR, role, version, snapshot, câu hỏi chờ duyệt lại) + 2 UI test + 4 contract test.)*
 - [ ] Màn làm bài tập trung, timer, question navigator và autosave.
 - [ ] Submit idempotent, chấm điểm server-side, snapshot attempt.
 - [ ] Trang review đáp án/giải thích và lịch sử attempts.

@@ -14,13 +14,13 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "predev": "npm run build -w @mach/contracts",
+    "predev": "npm run build -w @mach/contracts && npm run build -w @mach/document-pipeline",
     "dev": "concurrently --kill-others-on-fail --names api,web --prefix-colors cyan,magenta \"npm run dev -w @mach/api\" \"npm run dev -w @mach/web\"",
-    "dev:all": "npm run build -w @mach/contracts && concurrently --kill-others-on-fail --names api,web,worker --prefix-colors cyan,magenta,yellow \"npm run dev -w @mach/api\" \"npm run dev -w @mach/web\" \"npm run dev -w @mach/worker\"",
-    "build": "npm run build -w @mach/contracts && npm run build -w @mach/ui && npm run build -w @mach/api && npm run build -w @mach/worker && npm run build -w @mach/web",
+    "dev:all": "npm run build -w @mach/contracts && npm run build -w @mach/document-pipeline && concurrently --kill-others-on-fail --names api,web,worker --prefix-colors cyan,magenta,yellow \"npm run dev -w @mach/api\" \"npm run dev -w @mach/web\" \"npm run dev -w @mach/worker\"",
+    "build": "npm run build -w @mach/contracts && npm run build -w @mach/ui && npm run build -w @mach/document-pipeline && npm run build -w @mach/api && npm run build -w @mach/worker && npm run build -w @mach/web",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "pretest": "npm run build -w @mach/contracts",
+    "pretest": "npm run build -w @mach/contracts && npm run build -w @mach/document-pipeline",
     "test": "npm run test --workspaces --if-present",
     "test:watch": "npm run test:watch --workspaces --if-present",
     "format:check": "prettier --check .",

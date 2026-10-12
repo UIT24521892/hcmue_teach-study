@@ -1,11 +1,12 @@
 import { createServer } from "node:http";
 
 import { createApp } from "./app.js";
+import { createAppConfig } from "./config/app-config.js";
 import { loadEnvFiles, parseEnv } from "./config/env.js";
 
 loadEnvFiles();
 const env = parseEnv(process.env);
-const app = createApp({ webOrigin: env.WEB_ORIGIN });
+const app = createApp(createAppConfig(env));
 const server = createServer(app);
 
 server.listen(env.API_PORT, () => {
@@ -19,8 +20,9 @@ server.listen(env.API_PORT, () => {
   );
 });
 
-function shutdown(signal: NodeJS.Signals): void {
+async function shutdown(signal: NodeJS.Signals): Promise<void> {
   console.info(JSON.stringify({ level: "info", message: "API shutting down", signal }));
+  await app.locals.closeResources();
   server.close((error) => {
     if (error) {
       console.error(JSON.stringify({ level: "error", message: error.message }));
@@ -29,5 +31,5 @@ function shutdown(signal: NodeJS.Signals): void {
   });
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => void shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));

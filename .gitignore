@@ -16,5 +16,6 @@ uploads/
 
 .idea/
 .vscode/
+.workbuddy-ai/
 !.vscode/extensions.json
 !.vscode/settings.json
