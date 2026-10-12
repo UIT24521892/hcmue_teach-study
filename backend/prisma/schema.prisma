@@ -47,6 +47,11 @@ enum QuestionReviewStatus {
   REJECTED
 }
 
+enum QuizAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+}
+
 enum QuizStatus {
   DRAFT
   PUBLISHED
@@ -68,6 +73,7 @@ model User {
   documents         Document[]
   questionRevisions QuestionRevision[] @relation("QuestionRevisionEditor")
   quizzes           Quiz[]
+  quizAttempts      QuizAttempt[]
 
   @@index([role])
   @@map("users")
@@ -183,8 +189,9 @@ model Quiz {
   updatedAt        DateTime   @updatedAt @map("updated_at")
   deletedAt        DateTime?  @map("deleted_at")
 
-  owner User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  items QuizQuestion[]
+  owner    User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items    QuizQuestion[]
+  attempts QuizAttempt[]
 
   @@index([ownerId, status, createdAt])
   @@map("quizzes")
@@ -208,6 +215,52 @@ model QuizQuestion {
   @@unique([quizId, questionId])
   @@index([questionId])
   @@map("quiz_questions")
+}
+
+/// One learner's run through a published quiz. `items` copies the published
+/// snapshot (answers included) when the attempt starts, so grading and review
+/// never depend on the quiz or question bank afterwards. `activeKey` is set
+/// only while in progress, making "one open attempt per learner and quiz" a
+/// database guarantee.
+model QuizAttempt {
+  id           String            @id @default(cuid())
+  quizId       String            @map("quiz_id")
+  userId       String            @map("user_id")
+  status       QuizAttemptStatus @default(IN_PROGRESS)
+  activeKey    String?           @unique @map("active_key")
+  items        Json
+  totalCount   Int               @map("total_count")
+  correctCount Int?              @map("correct_count")
+  score        Int?
+  startedAt    DateTime          @default(now()) @map("started_at")
+  deadlineAt   DateTime?         @map("deadline_at")
+  submittedAt  DateTime?         @map("submitted_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  quiz    Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers AttemptAnswer[]
+
+  @@index([userId, quizId, createdAt])
+  @@index([quizId, status])
+  @@map("quiz_attempts")
+}
+
+/// Latest saved response per question position. `isCorrect` is filled when the
+/// attempt is graded on submit.
+model AttemptAnswer {
+  id        String   @id @default(cuid())
+  attemptId String   @map("attempt_id")
+  position  Int
+  response  String   @db.Text
+  isCorrect Boolean? @map("is_correct")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  attempt QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, position])
+  @@map("attempt_answers")
 }
 
 /// Rotating refresh tokens. Only a SHA-256 hash of the token is persisted, so a

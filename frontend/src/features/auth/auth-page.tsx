@@ -136,8 +136,11 @@ function SessionCheckPage({ error, onRetry }: { error: string; onRetry: () => Pr
           : "Kết nối tới máy chủ đang gián đoạn. Bạn có thể thử lại mà không cần nhập lại thông tin."
       }
       footer={
-        <Link to="/" className="focus-ring rounded font-semibold underline underline-offset-4">
-          Về bản trải nghiệm
+        <Link
+          to="/register"
+          className="focus-ring rounded font-semibold underline underline-offset-4"
+        >
+          Tạo tài khoản mới
         </Link>
       }
     >

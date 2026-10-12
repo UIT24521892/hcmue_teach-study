@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 
 import type { AppConfig } from "./config/app-config.js";
+import { createAttemptRouter } from "./features/attempts/attempt.route.js";
 import { createAuthRouter } from "./features/auth/auth.route.js";
 import { createDocumentRouter } from "./features/documents/document.route.js";
 import { healthRouter } from "./features/health/health.route.js";
@@ -39,6 +40,8 @@ export function createApp(config: AppConfig) {
     ...config.documents,
   });
   app.use("/api/v1/documents", documentRouter);
+  // Before the quiz router: its owner-only role gate would reject learners.
+  app.use("/api/v1", createAttemptRouter({ accessTokenSecret: config.auth.accessTokenSecret }));
   app.use(
     "/api/v1/quizzes",
     createQuizRouter({ accessTokenSecret: config.auth.accessTokenSecret }),

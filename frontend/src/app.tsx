@@ -38,6 +38,7 @@ import { NotesPage } from "./features/notes/notes-page";
 import { ProgressPage } from "./features/progress/progress-page";
 import { SettingsPage } from "./features/settings/settings-page";
 import { PracticePage, QuizPage, ResultPage } from "./features/practice/practice-page";
+import { AttemptPage } from "./features/attempts/attempt-page";
 
 const navigation = [
   { label: "Tổng quan", path: "/", icon: LayoutDashboard },
@@ -152,12 +153,13 @@ function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [preferenceError, setPreferenceError] = useState("");
-  const isQuiz = /^\/practice\/[^/]+$/.test(location.pathname);
+  const isQuiz = /^\/(practice|attempts)\/[^/]+$/.test(location.pathname);
   const pageTitle =
     [
       ...navigation,
       { label: "Cài đặt", path: "/settings" },
       { label: "Tài khoản", path: "/account" },
+      { label: "Bài làm", path: "/attempts/" },
     ].find((item) =>
       item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path),
     )?.label ?? (location.pathname.startsWith("/results/") ? "Kết quả bài luyện" : "Mạch");
@@ -287,21 +289,8 @@ function AppShell() {
           </div>
         </header>
         <div className="border-b border-line bg-surface px-4 py-2.5 text-center text-[0.7rem] leading-5 text-ink-muted sm:px-7">
-          {user ? (
-            <>
-              <span className="font-semibold text-ink">Tài khoản thật</span> · Phiên đăng nhập do
-              máy chủ xác thực · Thư viện tài liệu và soạn quiz dùng máy chủ thật cho giáo
-              viên/người tự học; lớp học và làm bài vẫn là dữ liệu mẫu trên thiết bị
-            </>
-          ) : (
-            <>
-              <span className="font-semibold text-ink">Bản trải nghiệm UI</span> · Dữ liệu mẫu, lưu
-              trên thiết bị · Chưa kết nối tài khoản, AI hoặc lớp học thật ·{" "}
-              <Link to="/login" className="focus-ring rounded underline underline-offset-4">
-                Đăng nhập
-              </Link>
-            </>
-          )}
+          <span className="font-semibold text-ink">Tài khoản thật</span> · Tài liệu, quiz và bài làm
+          lưu trên máy chủ · Lớp học, ghi chú và bài luyện mẫu vẫn là dữ liệu trên thiết bị
         </div>
         {(storageError || preferenceError) && (
           <p role="alert" className="mx-4 mt-4 rounded-xl border border-accent p-4 text-sm">
@@ -325,16 +314,10 @@ function AppShell() {
             <Route path="/practice" element={<PracticePage />} />
             <Route path="/practice/:quizId" element={<QuizPage />} />
             <Route path="/results/:attemptId" element={<ResultPage />} />
+            <Route path="/attempts/:attemptId" element={<AttemptPage />} />
             <Route path="/notes" element={<NotesPage />} />
             <Route path="/progress" element={<ProgressPage />} />
-            <Route
-              path="/account"
-              element={
-                <RequireAuth>
-                  <AccountPage />
-                </RequireAuth>
-              }
-            />
+            <Route path="/account" element={<AccountPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route
               path="*"
@@ -407,7 +390,15 @@ export function App() {
           {/* Auth screens render without the dashboard shell. */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="*" element={<AppShell />} />
+          {/* Every workspace page requires a server-verified session. */}
+          <Route
+            path="*"
+            element={
+              <RequireAuth fullPage>
+                <AppShell />
+              </RequireAuth>
+            }
+          />
         </Routes>
       </DemoProvider>
     </AuthProvider>

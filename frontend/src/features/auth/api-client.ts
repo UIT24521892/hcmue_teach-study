@@ -32,7 +32,7 @@ export class ApiError extends Error {
 
 export interface RequestOptions<T> {
   schema: z.ZodType<T>;
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   /**
    * Credential endpoints return 401 for bad input, not for an expired session,

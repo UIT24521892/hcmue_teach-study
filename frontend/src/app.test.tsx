@@ -1,8 +1,49 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
+import type { AuthSession, UserRole } from "@mach/contracts";
+
 import { App } from "./app";
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+const emptyPage = { page: 1, pageSize: 50, total: 0, pageCount: 0 };
+
+/** Signs the app in as `role`; owner libraries answer with empty pages. */
+function stubSession(role: UserRole) {
+  const session: AuthSession = {
+    user: {
+      id: `user_${role}`,
+      name: "Cô Minh Anh",
+      email: `${role}@example.com`,
+      role,
+      timezone: "Asia/Ho_Chi_Minh",
+      createdAt: "2026-10-12T00:00:00.000Z",
+    },
+    accessToken: `access-${role}`,
+    accessTokenExpiresAt: "2026-10-12T01:00:00.000Z",
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) return jsonResponse(session);
+      if (url.includes("/documents?page=")) {
+        return jsonResponse({ documents: [], pagination: emptyPage });
+      }
+      if (url.includes("/quizzes?page=")) {
+        return jsonResponse({ quizzes: [], pagination: emptyPage });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    }),
+  );
+}
 
 function renderApp(path = "/") {
   return render(
@@ -12,27 +53,38 @@ function renderApp(path = "/") {
   );
 }
 
+describe("App access", () => {
+  it("sends an anonymous visitor to the login page and keeps the target path", async () => {
+    renderApp("/notes");
+
+    expect(await screen.findByRole("heading", { name: "Đăng nhập để tiếp tục." })).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: /điều hướng chính/i })).not.toBeInTheDocument();
+  });
+});
+
 describe("App", () => {
-  it("renders the dashboard shell", () => {
+  beforeEach(() => stubSession("teacher"));
+
+  it("renders the dashboard shell", async () => {
     renderApp();
 
-    expect(screen.getByRole("heading", { name: /giữ nhịp học/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /giữ nhịp học/i })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: /điều hướng chính/i })).toBeInTheDocument();
   });
 
-  it("changes the saved theme", () => {
+  it("changes the saved theme", async () => {
     renderApp();
-    const themeButton = screen.getByRole("button", { name: /chuyển sang giao diện/i });
+    const themeButton = await screen.findByRole("button", { name: /chuyển sang giao diện/i });
 
     fireEvent.click(themeButton);
 
     expect(window.localStorage.getItem("mach-theme")).toBe(document.documentElement.dataset.theme);
   });
 
-  it("collapses and expands the desktop sidebar", () => {
+  it("collapses and expands the desktop sidebar", async () => {
     renderApp();
 
-    const collapseButton = screen.getByRole("button", { name: "Thu gọn thanh bên" });
+    const collapseButton = await screen.findByRole("button", { name: "Thu gọn thanh bên" });
     expect(collapseButton).toHaveAttribute("aria-expanded", "true");
 
     fireEvent.click(collapseButton);
@@ -58,23 +110,23 @@ describe("App", () => {
     ["/progress", "Nhìn lại để đi xa hơn."],
     ["/settings", "Học theo cách của bạn."],
     ["/missing", "Trang này chưa có trong khu vườn"],
-  ])("renders route %s directly", (path, title) => {
+  ])("renders route %s directly", async (path, title) => {
     renderApp(path);
-    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
   });
 
-  it("navigates to a real page and marks the active link", () => {
+  it("navigates to a real page and marks the active link", async () => {
     renderApp();
-    fireEvent.click(screen.getByRole("link", { name: "Tài liệu" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Tài liệu" }));
     expect(
       screen.getByRole("heading", { name: "Một nơi cho mọi điều muốn học." }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Tài liệu" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("saves a note without counting edits as new sessions", () => {
+  it("saves a note without counting edits as new sessions", async () => {
     renderApp("/notes");
-    fireEvent.change(screen.getByLabelText("Hôm nay bạn học được gì?"), {
+    fireEvent.change(await screen.findByLabelText("Hôm nay bạn học được gì?"), {
       target: { value: "I learned a new word today." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Lưu ghi chú" }));
@@ -85,30 +137,36 @@ describe("App", () => {
     expect(JSON.parse(localStorage.getItem("mach-demo-v1") ?? "{}").notes).toHaveLength(12);
   });
 
-  it("changes demo role and removes classes from the self-learner navigation", () => {
+  it("shows the server-verified role in settings without a preview switch", async () => {
     renderApp("/settings");
-    fireEvent.change(screen.getByLabelText("Xem giao diện theo vai trò"), {
-      target: { value: "self_learner" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
-    expect(screen.queryByRole("link", { name: "Lớp học" })).not.toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem("mach-demo-v1") ?? "{}").role).toBe("self_learner");
+    expect(await screen.findByLabelText("Vai trò tài khoản")).toHaveTextContent("Giáo viên");
+    expect(screen.queryByLabelText("Xem giao diện theo vai trò")).not.toBeInTheDocument();
   });
 
-  it("shows a useful empty state for document search", () => {
+  it("does not crash on corrupted stored demo data", async () => {
+    localStorage.setItem("mach-demo-v1", "invalid-json");
+    renderApp();
+    expect(await screen.findByRole("heading", { name: /giữ nhịp học/i })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Không đọc được dữ liệu đã lưu");
+  });
+});
+
+describe("App by role", () => {
+  it("removes classes from the self-learner navigation", async () => {
+    stubSession("self_learner");
+    renderApp("/settings");
+    expect(await screen.findByLabelText("Vai trò tài khoản")).toHaveTextContent("Người tự học");
+    expect(screen.queryByRole("link", { name: "Lớp học" })).not.toBeInTheDocument();
+  });
+
+  it("shows a useful empty state for a student's sample document search", async () => {
+    stubSession("student");
     renderApp("/documents");
-    fireEvent.change(screen.getByRole("searchbox", { name: "Tìm tài liệu" }), {
+    fireEvent.change(await screen.findByRole("searchbox", { name: "Tìm tài liệu" }), {
       target: { value: "no-match" },
     });
     expect(screen.getByRole("heading", { name: "Chưa tìm thấy tài liệu" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Bỏ bộ lọc" }));
     expect(screen.getByRole("heading", { name: "Small habits, big changes" })).toBeInTheDocument();
-  });
-
-  it("does not crash on corrupted stored demo data", () => {
-    localStorage.setItem("mach-demo-v1", "invalid-json");
-    renderApp();
-    expect(screen.getByRole("alert")).toHaveTextContent("Không đọc được dữ liệu đã lưu");
-    expect(screen.getByRole("heading", { name: /giữ nhịp học/i })).toBeInTheDocument();
   });
 });

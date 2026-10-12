@@ -62,6 +62,30 @@ async function mockAuthenticatedAuth(page: Page, role: SessionRole) {
   });
 }
 
+/**
+ * Every workspace page now requires a session. Tests start as a signed-in
+ * teacher with empty server libraries; a test that needs other data registers
+ * its own route later, which Playwright consults first.
+ */
+test.beforeEach(async ({ page }) => {
+  await mockAuthenticatedAuth(page, "teacher");
+  const empty = { page: 1, pageSize: 50, total: 0, pageCount: 0 };
+  await page.route("**/api/v1/documents**", (route) =>
+    fulfillJson(route, { documents: [], pagination: empty }),
+  );
+  await page.route("**/api/v1/quizzes**", (route) =>
+    fulfillJson(route, { quizzes: [], pagination: empty }),
+  );
+});
+
+test("an anonymous visitor lands on login and returns to the requested page", async ({ page }) => {
+  await mockAnonymousAuth(page);
+  await page.goto("/notes");
+  await expect(page).toHaveURL(/\/login\?next=%2Fnotes$/);
+  await expect(page.getByRole("heading", { name: "Đăng nhập để tiếp tục." })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Điều hướng chính" })).toHaveCount(0);
+});
+
 async function mockDocumentPipeline(page: Page) {
   const readyId = "18ea5220-111c-4143-a108-5ed19cbf5f76";
   const processingId = "d2873396-fe5d-487c-986e-eeaa6b805b91";
@@ -300,23 +324,17 @@ test("expired quiz locks answers and can still submit", async ({ page }) => {
   await expect(page).toHaveURL(/\/results\/expired-test$/);
 });
 
-test("file validation, local metadata and empty search states", async ({ page }) => {
+test("file validation and empty search states", async ({ page }) => {
+  await mockDocumentPipeline(page);
   await page.goto("/documents?upload=1");
   await page.getByLabel("File tài liệu").setInputFiles({
     name: "invalid.exe",
     mimeType: "application/octet-stream",
     buffer: Buffer.from("not a document"),
   });
-  await page.getByRole("button", { name: "Thêm vào thư viện demo" }).click();
+  await page.getByRole("button", { name: "Tải lên & tạo câu hỏi" }).click();
   await expect(page.getByRole("alert")).toContainText("Định dạng không hợp lệ");
-  await page.getByLabel("File tài liệu").setInputFiles({
-    name: "lesson.txt",
-    mimeType: "text/plain",
-    buffer: Buffer.from("English lesson"),
-  });
-  await page.getByRole("button", { name: "Thêm vào thư viện demo" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "lesson.txt" })).toBeVisible();
+  await page.getByRole("button", { name: "Đóng hộp thoại" }).click();
   await page.getByRole("searchbox", { name: "Tìm tài liệu" }).fill("no-match");
   await expect(page.getByRole("heading", { name: "Chưa tìm thấy tài liệu" })).toBeVisible();
 });
@@ -363,17 +381,6 @@ test("notes persist and editing the same date does not farm leaves", async ({ pa
   await expect(
     page.getByRole("img", { name: "12 buổi học, 1 cành hoàn chỉnh và 12 chiếc lá" }),
   ).toBeVisible();
-});
-
-test("role preview changes navigation without pretending to authenticate", async ({ page }) => {
-  await page.goto("/settings");
-  await page.getByLabel("Xem giao diện theo vai trò").selectOption("self_learner");
-  await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await page.reload();
-  await expect(page.getByLabel("Xem giao diện theo vai trò")).toHaveValue("self_learner");
-  await page.goto("/classes");
-  await expect(page.getByRole("heading", { name: "Không gian tự học của bạn" })).toBeVisible();
-  await expect(page.getByText("Bản trải nghiệm UI", { exact: true })).toBeVisible();
 });
 
 test("login follows an internal next path and exposes the authenticated account", async ({
@@ -480,16 +487,9 @@ test("registration reaches account and failed logout can be retried", async ({ p
   expect(logoutCalls).toBe(2);
 });
 
-test("authenticated teacher overrides a stored self-learner preview across surfaces", async ({
+test("an authenticated teacher sees teaching surfaces and a fixed role", async ({
   page,
 }, testInfo) => {
-  await mockAnonymousAuth(page);
-  await page.goto("/settings");
-  await page.getByLabel("Xem giao diện theo vai trò").selectOption("self_learner");
-  await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-
-  await page.unroute("**/api/v1/auth/**");
-  await mockAuthenticatedAuth(page, "teacher");
   await mockDocumentPipeline(page);
   await page.goto("/classes");
   if (testInfo.project.name.startsWith("mobile")) {
@@ -510,7 +510,7 @@ test("authenticated teacher overrides a stored self-learner preview across surfa
   await expect(page.getByLabel("Xem giao diện theo vai trò")).toHaveCount(0);
 });
 
-test("authenticated self-learner overrides the default teacher preview", async ({ page }) => {
+test("an authenticated self-learner has no class workspace", async ({ page }) => {
   await mockAuthenticatedAuth(page, "self_learner");
   await page.goto("/classes");
 
@@ -520,4 +520,102 @@ test("authenticated self-learner overrides the default teacher preview", async (
   await page.goto("/settings");
   await expect(page.getByLabel("Vai trò tài khoản")).toHaveText("Người tự học");
   await expect(page.getByText("Vai trò do máy chủ xác thực.", { exact: false })).toBeVisible();
+});
+
+test("a server quiz attempt survives a reload, submits once and shows the review", async ({
+  page,
+}, testInfo) => {
+  const quizId = "6f5c3f0e-2f0d-4b8e-9a51-3c1d2a7e9b10";
+  const attemptId = "9b2f6a8e-5d0c-4e8b-a1f2-3c4d5e6f7a8b";
+  const startedAt = new Date().toISOString();
+  const deadlineAt = new Date(Date.now() + 10 * 60_000).toISOString();
+  const saved = new Map<number, string>();
+  let submits = 0;
+  const items = [
+    {
+      position: 1,
+      type: "multiple_choice",
+      prompt: "Which word is in the text?",
+      options: ["grammar", "ocean", "window"],
+      difficulty: "easy",
+      correctAnswer: "grammar",
+      explanation: "Grammar is in the first line.",
+    },
+    {
+      position: 2,
+      type: "true_false",
+      prompt: "The text mentions oceans.",
+      options: null,
+      difficulty: "easy",
+      correctAnswer: "false",
+      explanation: "Oceans are not mentioned.",
+    },
+  ];
+  const attemptBody = () => {
+    const done = submits > 0;
+    const correct = items.filter((item) => saved.get(item.position) === item.correctAnswer).length;
+    return {
+      attempt: {
+        id: attemptId,
+        quizId,
+        quizTitle: "Unit 3 · Daily habits check",
+        status: done ? "submitted" : "in_progress",
+        totalCount: items.length,
+        answeredCount: saved.size,
+        correctCount: done ? correct : null,
+        score: done ? Math.round((correct / items.length) * 100) : null,
+        startedAt,
+        deadlineAt,
+        submittedAt: done ? new Date().toISOString() : null,
+        serverNow: new Date().toISOString(),
+        items: items.map(({ correctAnswer, explanation, ...item }) => ({
+          ...item,
+          response: saved.get(item.position) ?? null,
+          result: done
+            ? { correctAnswer, explanation, isCorrect: saved.get(item.position) === correctAnswer }
+            : null,
+        })),
+      },
+    };
+  };
+  await page.route("**/api/v1/attempts/**", async (route) => {
+    const request = route.request();
+    const body = request.postDataJSON() as {
+      answers?: Array<{ position: number; response: string }>;
+    } | null;
+    for (const answer of body?.answers ?? []) {
+      if (answer.response) saved.set(answer.position, answer.response);
+      else saved.delete(answer.position);
+    }
+    if (request.url().endsWith("/submit")) submits += 1;
+    await fulfillJson(route, attemptBody());
+  });
+  await page.route(`**/api/v1/quizzes/${quizId}/attempts?**`, async (route) => {
+    const { serverNow: _serverNow, items: _items, ...summary } = attemptBody().attempt;
+    await fulfillJson(route, {
+      attempts: [summary],
+      pagination: { page: 1, pageSize: 10, total: 1, pageCount: 1 },
+    });
+  });
+
+  await page.goto(`/attempts/${attemptId}`);
+  await page.getByRole("radio", { name: /grammar/ }).check();
+  await expect(page.getByText("Đã lưu trên máy chủ")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("attempt-room.png"), fullPage: true });
+
+  await page.reload();
+  await expect(page.getByRole("radio", { name: /grammar/ })).toBeChecked();
+  await page.getByRole("button", { name: "Câu tiếp" }).click();
+  await page.getByRole("radio", { name: "B. Sai" }).check();
+  await page.getByRole("button", { name: "Nộp bài" }).first().click();
+  await page.getByRole("button", { name: "Xác nhận nộp bài" }).click();
+
+  await expect(page.getByText("Đúng 2/2 câu")).toBeVisible();
+  await expect(page.getByText("Oceans are not mentioned.")).toBeVisible();
+  await expect(page.getByText("100% · 2/2")).toBeVisible();
+  expect(submits).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
+    false,
+  );
+  await page.screenshot({ path: testInfo.outputPath("attempt-review.png"), fullPage: true });
 });

@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import {
   Archive,
@@ -9,6 +10,7 @@ import {
   ListChecks,
   LoaderCircle,
   PencilLine,
+  Play,
   Plus,
   RotateCcw,
   Send,
@@ -28,6 +30,7 @@ import { Button } from "@mach/ui";
 import { Badge, EmptyState, LinkButton, Modal } from "../../components/page-ui";
 import { ApiError } from "../auth/api-client";
 import { useAuth } from "../auth/auth-context";
+import { createAttemptsApi } from "../attempts/attempts-api";
 import { createDocumentsApi } from "../documents/documents-api";
 import { createQuizzesApi } from "./quizzes-api";
 
@@ -422,6 +425,8 @@ type QuizDialog =
 export function QuizLibrary() {
   const auth = useAuth();
   const api = useMemo(() => createQuizzesApi(auth.client), [auth.client]);
+  const attemptsApi = useMemo(() => createAttemptsApi(auth.client), [auth.client]);
+  const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -468,6 +473,18 @@ export function QuizLibrary() {
     } catch (openError) {
       setError(errorMessage(openError));
     } finally {
+      setBusyId("");
+    }
+  }
+
+  async function takeQuiz(quiz: QuizSummary) {
+    setBusyId(quiz.id);
+    setError("");
+    try {
+      const response = await attemptsApi.start(quiz.id);
+      navigate(`/attempts/${response.attempt.id}`);
+    } catch (startError) {
+      setError(errorMessage(startError));
       setBusyId("");
     }
   }
@@ -604,13 +621,20 @@ export function QuizLibrary() {
                     </Button>
                   </>
                 ) : (
-                  <Button
-                    variant="secondary"
-                    disabled={busyId === quiz.id}
-                    onClick={() => void open(quiz, "view")}
-                  >
-                    <Eye className="size-4" aria-hidden="true" /> Xem câu hỏi
-                  </Button>
+                  <>
+                    {quiz.status === "published" && (
+                      <Button disabled={busyId === quiz.id} onClick={() => void takeQuiz(quiz)}>
+                        <Play className="size-4" aria-hidden="true" /> Làm bài
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      disabled={busyId === quiz.id}
+                      onClick={() => void open(quiz, "view")}
+                    >
+                      <Eye className="size-4" aria-hidden="true" /> Xem câu hỏi
+                    </Button>
+                  </>
                 )}
                 {quiz.status !== "archived" && (
                   <Button

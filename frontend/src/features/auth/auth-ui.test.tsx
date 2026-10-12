@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
@@ -254,20 +254,18 @@ describe("auth UI", () => {
     expect(screen.getByRole("heading", { name: "Hồ sơ của bạn." })).toBeInTheDocument();
   });
 
-  it("offers only the three supported demo roles", async () => {
+  it("offers only the three self-registerable roles", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn<typeof fetch>(async () => jsonResponse({}, 401)),
     );
 
-    renderApp("/settings");
-    const select = await screen.findByLabelText("Xem giao diện theo vai trò");
-    const options = within(select)
-      .getAllByRole("option")
-      .map((option) => option.textContent);
+    renderApp("/register");
+    await screen.findByRole("radio", { name: "Giáo viên" });
+    const roles = screen.getAllByRole("radio").map((radio) => radio.getAttribute("value"));
 
-    expect(options).toEqual(["Giáo viên", "Học sinh", "Người tự học"]);
-    expect(options).not.toContain("Quản trị");
+    expect(roles).toEqual(["teacher", "student", "self_learner"]);
+    expect(roles).not.toContain("admin");
   });
 
   it("uses the authenticated teacher role over a stored learner preview", async () => {

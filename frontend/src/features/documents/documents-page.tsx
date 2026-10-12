@@ -354,39 +354,19 @@ export function DocumentsPage() {
       return;
     }
 
-    if (isRemoteLibrary) {
-      setUploading(true);
-      try {
-        const result = await api.upload(file);
-        setAdded(`Đã tải ${result.document.originalName}. Mạch đang tạo câu hỏi ở chế độ nền.`);
-        setRemoteDocuments((current) => [result.document, ...current]);
-        setJobs((current) => ({ ...current, [result.document.id]: result.job }));
-        setUpload(false);
-        setRefreshKey((value) => value + 1);
-      } catch (uploadError) {
-        setError(errorMessage(uploadError));
-      } finally {
-        setUploading(false);
-      }
-      return;
+    setUploading(true);
+    try {
+      const result = await api.upload(file);
+      setAdded(`Đã tải ${result.document.originalName}. Mạch đang tạo câu hỏi ở chế độ nền.`);
+      setRemoteDocuments((current) => [result.document, ...current]);
+      setJobs((current) => ({ ...current, [result.document.id]: result.job }));
+      setUpload(false);
+      setRefreshKey((value) => value + 1);
+    } catch (uploadError) {
+      setError(errorMessage(uploadError));
+    } finally {
+      setUploading(false);
     }
-
-    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-    update((current) => ({
-      ...current,
-      documents: [
-        {
-          id: crypto.randomUUID(),
-          title: file.name.slice(0, 180),
-          type: extension.toUpperCase(),
-          status: "local",
-          size: formatBytes(file.size),
-        },
-        ...current.documents,
-      ],
-    }));
-    setAdded(`Đã thêm thông tin ${file.name}. Chưa tải file lên máy chủ.`);
-    setUpload(false);
   }
 
   async function retry(document: Document) {
@@ -688,11 +668,7 @@ export function DocumentsPage() {
         open={uploadOpen}
         onOpenChange={setUpload}
         title="Thêm một tài liệu mới"
-        description={
-          isRemoteLibrary
-            ? "File sẽ được gửi lên kho riêng tư và xử lý nền sau khi kiểm tra định dạng."
-            : "Chọn file để thử giao diện. Nội dung file không được gửi đi khi chưa đăng nhập."
-        }
+        description="File sẽ được gửi lên kho riêng tư và xử lý nền sau khi kiểm tra định dạng."
       >
         <form onSubmit={(event) => void submitUpload(event)}>
           <label htmlFor="document-file" className="field-label">
@@ -718,7 +694,7 @@ export function DocumentsPage() {
             {uploading && (
               <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
             )}
-            {isRemoteLibrary ? "Tải lên & tạo câu hỏi" : "Thêm vào thư viện demo"}
+            Tải lên & tạo câu hỏi
           </Button>
         </form>
       </Modal>

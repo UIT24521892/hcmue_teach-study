@@ -10,12 +10,28 @@ import { useAuth } from "./auth-context";
  * screen the API would reject, but it is never the security boundary — the
  * API re-checks the session and the role on every request.
  */
-export function RequireAuth({ children }: { children: ReactNode }) {
+export function RequireAuth({
+  children,
+  fullPage = false,
+}: {
+  children: ReactNode;
+  /** Centre loading/error states on an empty page when guarding the whole shell. */
+  fullPage?: boolean;
+}) {
   const { status, sessionError, retrySession } = useAuth();
   const location = useLocation();
 
+  const frame = (content: ReactNode) =>
+    fullPage ? (
+      <div className="grid min-h-dvh place-items-center bg-canvas p-4">
+        <div className="w-full max-w-md">{content}</div>
+      </div>
+    ) : (
+      content
+    );
+
   if (status === "loading") {
-    return (
+    return frame(
       <div className="panel grid min-h-48 place-items-center p-8 text-center">
         <div>
           <Loader2 className="mx-auto mb-3 size-5 animate-spin text-ink-muted" aria-hidden="true" />
@@ -23,12 +39,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
             Đang kiểm tra phiên đăng nhập…
           </p>
         </div>
-      </div>
+      </div>,
     );
   }
 
   if (status === "error") {
-    return (
+    return frame(
       <div className="panel grid min-h-48 place-items-center p-8 text-center">
         <div>
           <p role="alert" className="text-sm text-ink-muted">
@@ -38,7 +54,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
             Thử lại
           </Button>
         </div>
-      </div>
+      </div>,
     );
   }
 
