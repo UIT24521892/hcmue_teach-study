@@ -46,9 +46,3 @@ export const demoSchema = z.object({
   attempts: z.array(attemptSchema),
 });
 export type DemoData = z.infer<typeof demoSchema>;
-
-export const roleLabels: Record<Role, string> = {
-  teacher: "Giáo viên",
-  student: "Học sinh",
-  self_learner: "Người tự học",
-};

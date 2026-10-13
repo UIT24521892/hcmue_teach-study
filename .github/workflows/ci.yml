@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 15
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mach_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mach_test?schema=public
       NODE_ENV: test
       API_PORT: 4000
       WEB_ORIGIN: http://localhost:5173

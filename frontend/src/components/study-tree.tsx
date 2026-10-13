@@ -1,5 +1,6 @@
 import { Check, Flame, Leaf, Sprout } from "lucide-react";
 import { getStudyTreeProgress } from "./study-tree-progress";
+import { branchGeometry, treeLeafLayout } from "./study-tree-layout";
 import { cn } from "../lib/cn";
 
 export interface StudyTreeProps {
@@ -13,8 +14,6 @@ export function StudyTree({ completedSessions, streakDays = 0 }: StudyTreeProps)
   const archivedTrees = Math.max(0, Math.ceil(progress.completedSessions / 100) - 1);
   const leaves =
     progress.completedSessions === 0 ? 0 : ((progress.completedSessions - 1) % 100) + 1;
-  const branchCount = Math.ceil(leaves / 10);
-  const crownTop = 205 - Math.max(0, Math.ceil(branchCount / 2) - 1) * 30;
   const summary = `${progress.completedSessions} buổi học, ${progress.completedBranches} cành hoàn chỉnh và ${progress.completedSessions} chiếc lá`;
   return (
     <div className="study-tree mt-5">
@@ -61,85 +60,7 @@ export function StudyTree({ completedSessions, streakDays = 0 }: StudyTreeProps)
             className="fill-none stroke-tree/30"
             strokeWidth="1.5"
           />
-          {leaves === 0 ? (
-            <g>
-              <path
-                d="M210 273Q215 251 208 239"
-                className="fill-none stroke-tree"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              <ellipse cx="211" cy="274" rx="8" ry="4" className="fill-tree" />
-              <path d="M208 240Q186 219 199 216Q219 215 208 240" className="fill-accent" />
-            </g>
-          ) : (
-            <>
-              <path
-                d={`M198 274 Q208 249 204 ${crownTop + 22} Q211 ${crownTop - 2} 212 ${crownTop - 24} Q218 ${crownTop + 40} 216 246 L226 274 Q211 269 198 274Z`}
-                className="fill-tree"
-              />
-              <path
-                d={`M210 263Q213 223 211 ${crownTop}`}
-                className="fill-none stroke-canvas/25"
-                strokeWidth="1.5"
-              />
-              {Array.from({ length: branchCount }, (_, index) => {
-                const side = index % 2 === 0 ? -1 : 1;
-                const tier = Math.floor(index / 2);
-                const y = 236 - tier * 30;
-                const reach = 95 - tier * 7;
-                const count = Math.min(10, leaves - index * 10);
-                const extent = count === 10 ? 1 : 0.35 + Math.floor((count - 1) / 2) * 0.15;
-                const endX = 210 + side * reach * (1.2 * extent - 0.2 * extent * extent);
-                const endY = y - 48 * extent - 21 * extent * extent;
-                return (
-                  <g key={index} data-tree-branch="true">
-                    <path
-                      d={`M210 ${y} Q${210 + side * reach * 0.6 * extent} ${y - 24 * extent} ${endX} ${endY}`}
-                      className="fill-none stroke-tree"
-                      strokeWidth={count === 10 ? 4 : 2.5}
-                      strokeLinecap="round"
-                    />
-                    {Array.from({ length: count }, (_, leafIndex) => {
-                      const t = 0.3 + Math.floor(leafIndex / 2) * 0.15;
-                      const x = 210 + side * reach * (1.2 * t - 0.2 * t * t);
-                      const ly = y - 48 * t - 21 * t * t;
-                      const angle = side * (leafIndex % 2 === 0 ? 8 : 104);
-                      return (
-                        <g
-                          transform={`translate(${x} ${ly}) rotate(${angle})`}
-                          key={leafIndex}
-                          data-tree-leaf="true"
-                        >
-                          <path d="M0 0L0 -6" className="stroke-tree" strokeWidth="1.2" />
-                          <path
-                            d="M0 -5C-18 -14 -17 -30 0 -36C16 -25 14 -12 0 -5Z"
-                            className={cn(
-                              leafIndex % 3 === 0
-                                ? "fill-accent-strong"
-                                : leafIndex % 3 === 1
-                                  ? "fill-accent"
-                                  : "fill-warning",
-                            )}
-                          />
-                          <path
-                            d="M0 -7V-29M0 -18L-6 -23M0 -13L5 -18"
-                            className="stroke-canvas/55"
-                            fill="none"
-                            strokeWidth="1"
-                          />
-                        </g>
-                      );
-                    })}
-                  </g>
-                );
-              })}
-              <path
-                d={`M212 ${crownTop - 21}Q199 ${crownTop - 33} 211 ${crownTop - 42}Q224 ${crownTop - 31} 212 ${crownTop - 21}`}
-                className="fill-tree/50"
-              />
-            </>
-          )}
+          <StudyTreeGlyph leaves={leaves} />
           <path
             d="M159 273q-2-9-8-11m108 12q3-12 10-15"
             className="fill-none stroke-tree/40"
@@ -219,5 +140,107 @@ export function StudyTree({ completedSessions, streakDays = 0 }: StudyTreeProps)
         ))}
       </ol>
     </div>
+  );
+}
+
+/**
+ * Trunk, branches and leaves on the 420×300 tree canvas; ground line near y=274.
+ * `sway` adds an extra rotation (degrees) to the leaf at a flat index of
+ * `treeLeafLayout`, used by the interactive garden.
+ */
+export function StudyTreeGlyph({
+  leaves,
+  sway,
+}: {
+  leaves: number;
+  sway?: (index: number) => number;
+}) {
+  const branchCount = Math.ceil(leaves / 10);
+  const crownTop = 205 - Math.max(0, Math.ceil(branchCount / 2) - 1) * 30;
+  if (leaves <= 0) {
+    const turn = sway?.(0) ?? 0;
+    return (
+      <g>
+        <path
+          d="M210 273Q215 251 208 239"
+          className="fill-none stroke-tree"
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+        <ellipse cx="211" cy="274" rx="8" ry="4" className="fill-tree" />
+        <path
+          d="M208 240Q186 219 199 216Q219 215 208 240"
+          className="fill-accent"
+          transform={turn ? `rotate(${turn} 208 240)` : undefined}
+          data-tree-sprout="true"
+        />
+      </g>
+    );
+  }
+  const layout = treeLeafLayout(leaves);
+  let flat = 0;
+  return (
+    <>
+      <path
+        d={`M198 274 Q208 249 204 ${crownTop + 22} Q211 ${crownTop - 2} 212 ${crownTop - 24} Q218 ${crownTop + 40} 216 246 L226 274 Q211 269 198 274Z`}
+        className="fill-tree"
+      />
+      <path
+        d={`M210 263Q213 223 211 ${crownTop}`}
+        className="fill-none stroke-canvas/25"
+        strokeWidth="1.5"
+      />
+      {Array.from({ length: branchCount }, (_, index) => {
+        const { side, y, reach, count } = branchGeometry(leaves, index);
+        const extent = count === 10 ? 1 : 0.35 + Math.floor((count - 1) / 2) * 0.15;
+        const endX = 210 + side * reach * (1.2 * extent - 0.2 * extent * extent);
+        const endY = y - 48 * extent - 21 * extent * extent;
+        const branchLeaves = layout.slice(flat, flat + count);
+        const firstIndex = flat;
+        flat += count;
+        return (
+          <g key={index} data-tree-branch="true">
+            <path
+              d={`M210 ${y} Q${210 + side * reach * 0.6 * extent} ${y - 24 * extent} ${endX} ${endY}`}
+              className="fill-none stroke-tree"
+              strokeWidth={count === 10 ? 4 : 2.5}
+              strokeLinecap="round"
+            />
+            {branchLeaves.map((leaf, offset) => {
+              const turn = sway?.(firstIndex + offset) ?? 0;
+              return (
+                <g
+                  transform={`translate(${leaf.x} ${leaf.y}) rotate(${leaf.angle + turn})`}
+                  key={leaf.leafIndex}
+                  data-tree-leaf="true"
+                >
+                  <path d="M0 0L0 -6" className="stroke-tree" strokeWidth="1.2" />
+                  <path
+                    d="M0 -5C-18 -14 -17 -30 0 -36C16 -25 14 -12 0 -5Z"
+                    className={cn(
+                      leaf.leafIndex % 3 === 0
+                        ? "fill-accent-strong"
+                        : leaf.leafIndex % 3 === 1
+                          ? "fill-accent"
+                          : "fill-warning",
+                    )}
+                  />
+                  <path
+                    d="M0 -7V-29M0 -18L-6 -23M0 -13L5 -18"
+                    className="stroke-canvas/55"
+                    fill="none"
+                    strokeWidth="1"
+                  />
+                </g>
+              );
+            })}
+          </g>
+        );
+      })}
+      <path
+        d={`M212 ${crownTop - 21}Q199 ${crownTop - 33} 211 ${crownTop - 42}Q224 ${crownTop - 31} 212 ${crownTop - 21}`}
+        className="fill-tree/50"
+      />
+    </>
   );
 }

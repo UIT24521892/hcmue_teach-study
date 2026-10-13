@@ -35,6 +35,8 @@ Tuân theo thứ tự:
 8. Giai đoạn 5A — Hỏi–đáp lớp học và chatbot trong giảng dạy
 9. Giai đoạn 6 — Dashboard và hoàn thiện MVP
 
+Điều chỉnh ngày 12/10/2026 theo yêu cầu người dùng: Giai đoạn 2A tạm hoãn, thực hiện Giai đoạn 3 trước; xem trạng thái thực thi trong `PROJECT_PLAN.md`.
+
 Có thể làm sớm một dependency kỹ thuật của giai đoạn sau nếu giai đoạn hiện tại thực sự cần, nhưng phải ghi lại lý do. Không tự ý thêm tính năng nằm ngoài phạm vi MVP.
 
 ## Quy tắc kiến trúc

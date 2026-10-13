@@ -1,0 +1,33 @@
+{
+  "name": "@mach/document-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@prisma/client": "6.12.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "mammoth": "^1.12.3",
+    "pdfjs-dist": "^6.3.289",
+    "tesseract.js": "^7.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/jszip": "^3.4.0",
+    "jszip": "^3.10.2",
+    "vitest": "5.0.1"
+  }
+}

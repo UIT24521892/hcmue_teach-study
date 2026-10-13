@@ -7,6 +7,7 @@ import {
   ChartNoAxesCombined,
   GraduationCap,
   LayoutDashboard,
+  LogIn,
   Menu,
   Moon,
   PanelLeftClose,
@@ -20,10 +21,16 @@ import {
 } from "lucide-react";
 import { LogoMark } from "@mach/ui";
 import { cn } from "./lib/cn";
+import { initialsOf, roleLabels } from "./lib/roles";
 import { Badge, EmptyState, LinkButton, Modal } from "./components/page-ui";
 import { DemoProvider } from "./features/demo/provider";
 import { useDemo } from "./features/demo/context";
-import { roleLabels } from "./features/demo/schema";
+import { AuthProvider } from "./features/auth/auth-provider";
+import { useAuth } from "./features/auth/auth-context";
+import { LoginPage, RegisterPage } from "./features/auth/auth-page";
+import { AccountPage } from "./features/auth/account-page";
+import { RequireAuth } from "./features/auth/require-auth";
+import { useEffectiveRole } from "./features/auth/use-effective-role";
 import { DashboardPage } from "./features/dashboard/dashboard-page";
 import { DocumentsPage } from "./features/documents/documents-page";
 import { ClassesPage, ClassDetailPage } from "./features/classes/classes-page";
@@ -31,6 +38,7 @@ import { NotesPage } from "./features/notes/notes-page";
 import { ProgressPage } from "./features/progress/progress-page";
 import { SettingsPage } from "./features/settings/settings-page";
 import { PracticePage, QuizPage, ResultPage } from "./features/practice/practice-page";
+import { AttemptPage } from "./features/attempts/attempt-page";
 
 const navigation = [
   { label: "Tổng quan", path: "/", icon: LayoutDashboard },
@@ -59,11 +67,13 @@ function initialTheme(): Theme {
 
 function Navigation({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { data } = useDemo();
+  const role = useEffectiveRole();
+
   return (
     <>
       <nav aria-label="Điều hướng chính" className="space-y-1.5">
         {navigation
-          .filter((item) => data.role !== "self_learner" || item.path !== "/classes")
+          .filter((item) => role !== "self_learner" || item.path !== "/classes")
           .map((item) => (
             <NavLink
               key={item.path}
@@ -130,7 +140,9 @@ function Brand({ collapsed = false }: { collapsed?: boolean }) {
   );
 }
 function AppShell() {
-  const { data, storageError } = useDemo();
+  const { storageError } = useDemo();
+  const { user } = useAuth();
+  const role = useEffectiveRole();
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
   const [theme, setTheme] = useState<Theme>(initialTheme);
@@ -141,9 +153,14 @@ function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [preferenceError, setPreferenceError] = useState("");
-  const isQuiz = /^\/practice\/[^/]+$/.test(location.pathname);
+  const isQuiz = /^\/(practice|attempts)\/[^/]+$/.test(location.pathname);
   const pageTitle =
-    [...navigation, { label: "Cài đặt", path: "/settings" }].find((item) =>
+    [
+      ...navigation,
+      { label: "Cài đặt", path: "/settings" },
+      { label: "Tài khoản", path: "/account" },
+      { label: "Bài làm", path: "/attempts/" },
+    ].find((item) =>
       item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path),
     )?.label ?? (location.pathname.startsWith("/results/") ? "Kết quả bài luyện" : "Mạch");
   useEffect(() => {
@@ -240,7 +257,7 @@ function AppShell() {
                   <Search className="size-4" />
                 </button>
                 <span className="hidden lg:inline">
-                  <Badge>{roleLabels[data.role]}</Badge>
+                  <Badge tone={user ? "blue" : "muted"}>{roleLabels[role]}</Badge>
                 </span>
               </>
             )}
@@ -251,24 +268,29 @@ function AppShell() {
             >
               <ThemeIcon className="size-4" />
             </button>
-            <Link
-              to="/settings"
-              aria-label="Mở hồ sơ"
-              className="focus-ring grid size-10 place-items-center rounded-full bg-focus text-sm font-semibold text-surface"
-            >
-              {data.name
-                .trim()
-                .split(/\s+/)
-                .map((word) => word[0])
-                .slice(-2)
-                .join("")
-                .toUpperCase()}
-            </Link>
+            {user ? (
+              <Link
+                to="/account"
+                aria-label={`Mở hồ sơ của ${user.name}`}
+                className="focus-ring grid size-10 place-items-center rounded-full bg-focus text-sm font-semibold text-surface"
+              >
+                {initialsOf(user.name)}
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                aria-label="Đăng nhập"
+                className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-semibold hover:bg-surface-raised"
+              >
+                <LogIn className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Đăng nhập</span>
+              </Link>
+            )}
           </div>
         </header>
         <div className="border-b border-line bg-surface px-4 py-2.5 text-center text-[0.7rem] leading-5 text-ink-muted sm:px-7">
-          <span className="font-semibold text-ink">Bản trải nghiệm UI</span> · Dữ liệu mẫu, lưu trên
-          thiết bị · Chưa kết nối tài khoản, AI hoặc lớp học thật
+          <span className="font-semibold text-ink">Tài khoản thật</span> · Tài liệu, quiz, bài làm
+          và ghi chú lưu trên máy chủ · Lớp học và bài luyện mẫu vẫn là dữ liệu trên thiết bị
         </div>
         {(storageError || preferenceError) && (
           <p role="alert" className="mx-4 mt-4 rounded-xl border border-accent p-4 text-sm">
@@ -292,8 +314,10 @@ function AppShell() {
             <Route path="/practice" element={<PracticePage />} />
             <Route path="/practice/:quizId" element={<QuizPage />} />
             <Route path="/results/:attemptId" element={<ResultPage />} />
+            <Route path="/attempts/:attemptId" element={<AttemptPage />} />
             <Route path="/notes" element={<NotesPage />} />
             <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/account" element={<AccountPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route
               path="*"
@@ -333,7 +357,7 @@ function AppShell() {
           {[...navigation, { path: "/settings", label: "Cài đặt", icon: Settings }]
             .filter(
               (item) =>
-                (data.role !== "self_learner" || item.path !== "/classes") &&
+                (role !== "self_learner" || item.path !== "/classes") &&
                 item.label.toLocaleLowerCase("vi").includes(query.toLocaleLowerCase("vi")),
             )
             .map((item) => (
@@ -360,8 +384,23 @@ function AppShell() {
 }
 export function App() {
   return (
-    <DemoProvider>
-      <AppShell />
-    </DemoProvider>
+    <AuthProvider>
+      <DemoProvider>
+        <Routes>
+          {/* Auth screens render without the dashboard shell. */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          {/* Every workspace page requires a server-verified session. */}
+          <Route
+            path="*"
+            element={
+              <RequireAuth fullPage>
+                <AppShell />
+              </RequireAuth>
+            }
+          />
+        </Routes>
+      </DemoProvider>
+    </AuthProvider>
   );
 }

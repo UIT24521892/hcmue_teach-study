@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Button } from "@mach/ui";
 import { Save } from "lucide-react";
 import { PageHeading, Badge } from "../../components/page-ui";
+import { roleLabels } from "../../lib/roles";
+import { useEffectiveRole } from "../auth/use-effective-role";
 import { useDemo } from "../demo/context";
-import { roleLabels, roleSchema, type Role } from "../demo/schema";
 
 export function SettingsPage() {
   const { data, update, storageError } = useDemo();
+  const effectiveRole = useEffectiveRole();
   const [name, setName] = useState(data.name);
-  const [role, setRole] = useState<Role>(data.role);
   const [goal, setGoal] = useState(data.goal);
   const [saved, setSaved] = useState("");
   return (
@@ -26,7 +27,11 @@ export function SettingsPage() {
             setSaved("Tên hiển thị không được để trống.");
             return;
           }
-          update((current) => ({ ...current, name: name.trim(), role, goal }));
+          update((current) => ({
+            ...current,
+            name: name.trim(),
+            goal,
+          }));
           setSaved("Đã lưu cài đặt demo.");
         }}
       >
@@ -35,8 +40,10 @@ export function SettingsPage() {
             {name.trim().slice(0, 2).toUpperCase()}
           </span>
           <div>
-            <h2 className="font-display text-2xl font-semibold">Hồ sơ trải nghiệm</h2>
-            <p className="mt-1 text-xs text-ink-muted">Không phải tài khoản đã xác thực</p>
+            <h2 className="font-display text-2xl font-semibold">Hồ sơ trên thiết bị</h2>
+            <p className="mt-1 text-xs text-ink-muted">
+              Tên hiển thị và mục tiêu chỉ lưu trên trình duyệt này
+            </p>
           </div>
         </div>
         <label htmlFor="profile-name" className="field-label">
@@ -50,25 +57,15 @@ export function SettingsPage() {
           onChange={(e) => setName(e.target.value)}
           required
         />
-        <label htmlFor="profile-role" className="field-label mt-5">
-          Xem giao diện theo vai trò
-        </label>
-        <select
-          id="profile-role"
-          className="field"
-          value={role}
-          onChange={(e) => setRole(roleSchema.parse(e.target.value))}
-        >
-          {Object.entries(roleLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <p className="mt-2 text-xs leading-6 text-ink-muted">
-          Đổi vai trò chỉ để xem UI. Không cấp quyền, đăng nhập hoặc chuyển sang dữ liệu người dùng
-          khác.
-        </p>
+        <div className="mt-5">
+          <p className="field-label">Vai trò tài khoản</p>
+          <p className="field mt-2 flex items-center" aria-label="Vai trò tài khoản">
+            {roleLabels[effectiveRole]}
+          </p>
+          <p className="mt-2 text-xs leading-6 text-ink-muted">
+            Vai trò do máy chủ xác thực. Cài đặt trên thiết bị không thay đổi quyền tài khoản.
+          </p>
+        </div>
         <label htmlFor="weekly-goal" className="field-label mt-5">
           Mục tiêu mỗi tuần
         </label>
@@ -98,8 +95,8 @@ export function SettingsPage() {
       <aside className="mt-6 max-w-3xl rounded-2xl border border-dashed border-line p-6">
         <h2 className="text-sm font-semibold">Tài khoản & bảo mật</h2>
         <p className="mt-2 text-sm leading-6 text-ink-muted">
-          Đăng nhập, đổi mật khẩu, phân quyền và đồng bộ dữ liệu sẽ được triển khai ở giai đoạn
-          Auth/RBAC. Bản UI này không yêu cầu hoặc lưu mật khẩu.
+          Đăng ký, đăng nhập và phiên tài khoản đã kết nối máy chủ. Đổi/khôi phục mật khẩu, chỉnh
+          sửa hồ sơ và đồng bộ dữ liệu học tập vẫn nằm trong kế hoạch Auth/RBAC.
         </p>
       </aside>
     </>

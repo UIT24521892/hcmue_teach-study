@@ -1,11 +1,11 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
-import { healthStatusSchema } from "@mach/contracts";
+import { errorResponseSchema, healthStatusSchema } from "@mach/contracts";
 
-import { createApp } from "./app.js";
+import { createTestApp } from "./test/app.js";
 
-const app = createApp({ webOrigin: "http://localhost:5173" });
+const app = createTestApp();
 
 describe("health endpoints", () => {
   it("returns the versioned health contract", async () => {
@@ -18,7 +18,7 @@ describe("health endpoints", () => {
   it("returns a consistent not-found error", async () => {
     const response = await request(app).get("/api/v1/missing").expect(404);
 
-    expect(response.body).toMatchObject({
+    expect(errorResponseSchema.parse(response.body)).toMatchObject({
       code: "NOT_FOUND",
       requestId: response.headers["x-request-id"],
     });
