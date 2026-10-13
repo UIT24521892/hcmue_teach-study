@@ -161,8 +161,8 @@ Trạng thái triển khai thực tế của các endpoint theo checkbox từng 
 
 **Trạng thái thực thi hiện tại — 12/10/2026:** theo quyết định của người dùng ngày 12/10/2026,
 **Giai đoạn 2A — Chatbot** được **tạm hoãn** (vẫn thuộc MVP, chưa bắt đầu) để ưu tiên các nghiệp vụ
-quiz/lớp học phục vụ một buổi dạy hoàn chỉnh. Giai đoạn 3 — Quiz và kết quả đã hoàn tất
-cho owner; giai đoạn kế tiếp theo thứ tự là **Giai đoạn 4 — Daily Notes**. Giai đoạn 2 đã hoàn tất ngày 20/09/2026. Giai đoạn 1 chưa được tuyên bố hoàn tất:
+quiz/lớp học phục vụ một buổi dạy hoàn chỉnh. Giai đoạn 3 — Quiz và kết quả (cho owner) và
+Giai đoạn 4 — Daily Notes đã hoàn tất; giai đoạn kế tiếp là **Giai đoạn 5 — Lớp học và nghiệp vụ giảng dạy**. Giai đoạn 2 đã hoàn tất ngày 20/09/2026. Giai đoạn 1 chưa được tuyên bố hoàn tất:
 khôi phục mật khẩu và profile mutation được tạm hoãn, còn ownership/membership policy cùng
 ma trận chống truy cập chéo sẽ được hoàn thiện theo từng tài nguyên thật ở các giai đoạn sau.
 Các mục tạm hoãn vẫn thuộc phạm vi MVP và phải được xử lý trước nghiệm thu cuối.
@@ -255,10 +255,18 @@ cả light/dark và đã chạy lại riêng sau tinh chỉnh. `lint`, `typechec
 
 ### Giai đoạn 4 — Daily Notes
 
-- [ ] CRUD note theo ngày, tự đánh giá mức hiểu và tag.
-- [ ] Liên kết document/quiz attempt thuộc quyền người dùng.
-- [ ] Calendar view, cây học tập và quy tắc streak theo timezone người dùng. *(UI demo có lịch/cây; dùng timezone thiết bị. Timezone tài khoản và dữ liệu backend chưa kết nối.)*
-- [ ] Empty states, keyboard navigation và responsive mobile.
+**Trạng thái:** HOÀN TẤT ngày 13/10/2026.
+
+- [x] CRUD note theo ngày, tự đánh giá mức hiểu và tag. *(13/10/2026: `GET /notes?from&to` (tối đa 63 ngày), `PUT/DELETE /notes/:date` một ghi chú/người/ngày với optimistic version, chặn ngày tương lai theo múi giờ tài khoản; tag dùng `Tag`/`DailyNoteTag`, gộp hoa/thường. Riêng tư cho mọi vai trò (ADR 0007).)*
+- [x] Liên kết document/quiz attempt thuộc quyền người dùng. *(`DailyNoteLink` có CHECK đúng một đích; chỉ nhận tài liệu của chính mình và bài làm đã nộp của chính mình, id lạ/của người khác đều 404; nguồn bị xóa thì ẩn link. `GET /attempts?status=submitted` cấp danh sách để chọn.)*
+- [x] Calendar view, cây học tập và quy tắc streak theo timezone người dùng. *(`GET /notes/progress`: một buổi = một ngày địa phương có ghi chú hoặc nộp bài, quy đổi múi giờ trong PostgreSQL; streak giữ đến hết ngày. Lịch dùng “hôm nay” của server; cây ở Ghi chú, Tổng quan và Tiến độ cùng đọc số liệu này. Test ranh giới 00:30 giờ VN = 17:30 UTC hôm trước.)*
+- [x] Empty states, keyboard navigation và responsive mobile. *(Trạng thái tháng trống/ngày trống/đang tải/lỗi/xung đột version; lịch dùng roving tabindex với mũi tên, Home/End, Page Up/Down; bản nháp giữ theo tài khoản trong tab; đã kiểm tra desktop-light và mobile-dark.)*
+
+Kiểm chứng lại ngày 13/10/2026: `lint`, `typecheck`, `build` và **203 unit/integration tests**
+đều qua (68 frontend, 97 API, 4 worker, 26 contracts, 8 document-pipeline).
+Bộ E2E với API mock đạt **23/38**, còn **15 ca thất bại do vượt giới hạn 30 giây** khi
+điều hướng, tải lại, chụp ảnh hoặc tương tác. Trace ghi nhận Google Fonts tải chậm;
+chưa xác nhận lại toàn bộ kiểm chứng responsive/theme và hành trình trình duyệt.
 
 **Hoàn tất khi:** note hiển thị đúng ngày/timezone, cây học tập và streak được kiểm thử ở ranh giới ngày.
 

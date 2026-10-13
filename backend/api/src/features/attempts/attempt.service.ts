@@ -141,10 +141,16 @@ export function createAttemptService(dependencies: AttemptServiceDependencies = 
       return toAttempt(await finalize(attempt, now, accepted), now);
     },
 
-    async listForQuiz(userId: string, quizId: string, input: { page: number; pageSize: number }) {
-      const result = await attempts.listOwned(userId, quizId, {
+    /** The user's own attempts, optionally for one quiz or only submitted ones. */
+    async listOwned(
+      userId: string,
+      input: { page: number; pageSize: number; quizId?: string; submittedOnly?: boolean },
+    ) {
+      const result = await attempts.listOwned(userId, {
         skip: (input.page - 1) * input.pageSize,
         take: input.pageSize,
+        ...(input.quizId ? { quizId: input.quizId } : {}),
+        ...(input.submittedOnly ? { submittedOnly: true } : {}),
       });
       return {
         attempts: result.items.map(toAttemptSummary),

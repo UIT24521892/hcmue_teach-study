@@ -289,8 +289,8 @@ function AppShell() {
           </div>
         </header>
         <div className="border-b border-line bg-surface px-4 py-2.5 text-center text-[0.7rem] leading-5 text-ink-muted sm:px-7">
-          <span className="font-semibold text-ink">Tài khoản thật</span> · Tài liệu, quiz và bài làm
-          lưu trên máy chủ · Lớp học, ghi chú và bài luyện mẫu vẫn là dữ liệu trên thiết bị
+          <span className="font-semibold text-ink">Tài khoản thật</span> · Tài liệu, quiz, bài làm
+          và ghi chú lưu trên máy chủ · Lớp học và bài luyện mẫu vẫn là dữ liệu trên thiết bị
         </div>
         {(storageError || preferenceError) && (
           <p role="alert" className="mx-4 mt-4 rounded-xl border border-accent p-4 text-sm">

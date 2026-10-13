@@ -84,10 +84,13 @@ export const attemptRepository = {
 
   async listOwned(
     userId: string,
-    quizId: string,
-    input: { skip: number; take: number },
+    input: { skip: number; take: number; quizId?: string; submittedOnly?: boolean },
   ): Promise<{ items: AttemptRecord[]; total: number }> {
-    const where: Prisma.QuizAttemptWhereInput = { userId, quizId };
+    const where: Prisma.QuizAttemptWhereInput = {
+      userId,
+      ...(input.quizId ? { quizId: input.quizId } : {}),
+      ...(input.submittedOnly ? { status: "SUBMITTED" } : {}),
+    };
     const [items, total] = await prisma.$transaction([
       prisma.quizAttempt.findMany({
         where,

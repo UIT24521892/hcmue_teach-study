@@ -11,11 +11,14 @@ import {
 import { usePagination } from "../../lib/use-pagination";
 import { StudyTree } from "../../components/study-tree";
 import { useDemo } from "../demo/context";
-import { calculateStreak, dateKey, formatDate, shiftDate } from "../../lib/dates";
+import { dateKey, formatDate, shiftDate } from "../../lib/dates";
+import { ServerStudyTree } from "../notes/server-study-tree";
+import { useStudyProgress } from "../notes/use-study-progress";
 import { cn } from "../../lib/cn";
 
 export function ProgressPage() {
   const { data } = useDemo();
+  const progressState = useStudyProgress();
   const [range, setRange] = useState(7);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSessions, setPreviewSessions] = useState(30);
@@ -126,7 +129,7 @@ export function ProgressPage() {
         <article className="panel p-6">
           <p className="eyebrow">Tích lũy, không đặt lại</p>
           <h2 className="mt-2 font-display text-2xl font-semibold">Khu vườn tri thức</h2>
-          <StudyTree completedSessions={dates.length} streakDays={calculateStreak(dates)} />
+          <ServerStudyTree state={progressState} />
           <p className="mt-5 text-xs leading-6 text-ink-muted">
             Bỏ lỡ một ngày có thể ngắt streak, nhưng không làm mất lá đã tích lũy. Cứ trở lại, cây
             vẫn ở đây.

@@ -220,11 +220,14 @@ export function createApiClient(config: ApiClientConfig = {}): ApiClient {
       throw await toApiError(response);
     }
 
+    // 204 No Content (e.g. DELETE) carries no body to parse.
     let payload: unknown;
-    try {
-      payload = await response.json();
-    } catch {
-      throw invalidResponse(response.status, undefined);
+    if (response.status !== 204) {
+      try {
+        payload = await response.json();
+      } catch {
+        throw invalidResponse(response.status, undefined);
+      }
     }
 
     const parsed = options.schema.safeParse(payload);

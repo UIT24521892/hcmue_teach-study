@@ -62,6 +62,11 @@ async function mockAuthenticatedAuth(page: Page, role: SessionRole) {
   });
 }
 
+/** Today in the account timezone the mocked server reports. */
+function todayKey() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+}
+
 /**
  * Every workspace page now requires a session. Tests start as a signed-in
  * teacher with empty server libraries; a test that needs other data registers
@@ -75,6 +80,20 @@ test.beforeEach(async ({ page }) => {
   );
   await page.route("**/api/v1/quizzes**", (route) =>
     fulfillJson(route, { quizzes: [], pagination: empty }),
+  );
+  await page.route("**/api/v1/notes/progress", (route) =>
+    fulfillJson(route, {
+      progress: {
+        timezone: "Asia/Ho_Chi_Minh",
+        today: todayKey(),
+        completedSessions: 12,
+        streakDays: 3,
+      },
+    }),
+  );
+  await page.route("**/api/v1/notes?**", (route) => fulfillJson(route, { notes: [] }));
+  await page.route("**/api/v1/attempts?**", (route) =>
+    fulfillJson(route, { attempts: [], pagination: empty }),
   );
 });
 
@@ -249,10 +268,6 @@ test("quiz autosaves, submits once, shows explanations and grows the tree", asyn
     () => JSON.parse(localStorage.getItem("mach-demo-v1")!).attempts.length,
   );
   expect(count).toBe(1);
-  await page.goto("/");
-  await expect(
-    page.getByRole("img", { name: "13 buổi học, 1 cành hoàn chỉnh và 13 chiếc lá" }),
-  ).toBeVisible();
 });
 
 test("growth milestones preserve accurate leaf counts and show the next tree", async ({
@@ -369,18 +384,65 @@ test("authenticated document pipeline is responsive in both themes", async ({ pa
   }
 });
 
-test("notes persist and editing the same date does not farm leaves", async ({ page }) => {
+test("notes persist on the server and editing the same date does not farm leaves", async ({
+  page,
+}) => {
+  const notes = new Map<string, Record<string, unknown>>();
+  await page.route("**/api/v1/notes/progress", (route) =>
+    fulfillJson(route, {
+      progress: {
+        timezone: "Asia/Ho_Chi_Minh",
+        today: todayKey(),
+        completedSessions: 12 + notes.size,
+        streakDays: 3 + notes.size,
+      },
+    }),
+  );
+  await page.route("**/api/v1/notes?**", (route) =>
+    fulfillJson(route, { notes: [...notes.values()] }),
+  );
+  await page.route(/\/api\/v1\/notes\/\d{4}-\d{2}-\d{2}$/, async (route) => {
+    const date = new URL(route.request().url()).pathname.split("/").pop()!;
+    const body = route.request().postDataJSON() as {
+      content: string;
+      understanding: number;
+      tags: string[];
+      version?: number;
+    };
+    const previous = notes.get(date);
+    expect(body.version).toBe(previous?.version);
+    const note = {
+      id: "18ea5220-111c-4143-a108-5ed19cbf5f76",
+      date,
+      content: body.content.trim(),
+      understanding: body.understanding,
+      tags: body.tags,
+      links: [],
+      version: ((previous?.version as number | undefined) ?? 0) + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    notes.set(date, note);
+    await fulfillJson(route, { note }, previous ? 200 : 201);
+  });
+
   await page.goto("/notes");
   await page.getByLabel("Hôm nay bạn học được gì?").fill("Today I learned consistency.");
+  await page.getByLabel("Tag").fill("Habits, Reading");
   await page.getByRole("button", { name: "Lưu ghi chú" }).click();
+  await expect(page.getByText("Đã lưu trên máy chủ")).toBeVisible();
   await page.reload();
   await expect(page.getByLabel("Hôm nay bạn học được gì?")).toHaveValue(
     "Today I learned consistency.",
   );
+  await expect(page.getByLabel("Tag")).toHaveValue("Habits, Reading");
+  await page.getByLabel("Hôm nay bạn học được gì?").fill("Consistency beats intensity.");
   await page.getByRole("button", { name: "Lưu ghi chú" }).click();
+  await expect(page.getByText("Đã lưu trên máy chủ")).toBeVisible();
   await expect(
-    page.getByRole("img", { name: "12 buổi học, 1 cành hoàn chỉnh và 12 chiếc lá" }),
+    page.getByRole("img", { name: "13 buổi học, 1 cành hoàn chỉnh và 13 chiếc lá" }),
   ).toBeVisible();
+  expect(notes.size).toBe(1);
 });
 
 test("login follows an internal next path and exposes the authenticated account", async ({
@@ -618,4 +680,38 @@ test("a server quiz attempt survives a reload, submits once and shows the review
     false,
   );
   await page.screenshot({ path: testInfo.outputPath("attempt-review.png"), fullPage: true });
+});
+
+test("the dashboard garden can be watered by hand and the sun springs home", async ({ page }) => {
+  await page.goto("/");
+  const garden = page.getByRole("group", { name: /Khu vườn của bạn: cây có 12 chiếc lá/ });
+  await garden.waitFor();
+  // On phones the garden sits below the fold; pointer input needs it on screen.
+  await page.getByRole("button", { name: /Bình tưới/ }).scrollIntoViewIfNeeded();
+  const scene = (await garden.boundingBox())!;
+
+  const can = page.getByRole("button", { name: /Bình tưới/ });
+  const home = (await can.boundingBox())!;
+  await page.mouse.move(home.x + home.width / 2, home.y + home.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(scene.x + scene.width * 0.62, scene.y + scene.height * 0.3, { steps: 12 });
+  await expect(can).toHaveAttribute("data-pouring", "true");
+  await page.mouse.up();
+  await expect(can).not.toHaveAttribute("data-pouring", "true");
+  await expect
+    .poll(async () => Math.abs((await can.boundingBox())!.x - home.x), { timeout: 3_000 })
+    .toBeLessThan(2);
+
+  const sun = page.getByRole("button", { name: /Mặt trời/ });
+  const sunHome = (await sun.boundingBox())!;
+  await page.mouse.move(sunHome.x + sunHome.width / 2, sunHome.y + sunHome.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(sunHome.x - 120, sunHome.y + 100, { steps: 8 });
+  expect(sunHome.x - (await sun.boundingBox())!.x).toBeGreaterThan(80);
+  await page.mouse.up();
+  await expect
+    .poll(async () => Math.abs((await sun.boundingBox())!.x - sunHome.x), { timeout: 3_000 })
+    .toBeLessThan(2);
+  await sun.click();
+  await expect(page.locator("[data-sun-rays]")).toBeVisible();
 });

@@ -22,6 +22,7 @@ const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(10),
 });
+const ownListQuerySchema = listQuerySchema.extend({ status: z.literal("submitted").optional() });
 
 /**
  * Taking quizzes. Any signed-in role may call these routes; the service
@@ -46,9 +47,21 @@ export function createAttemptRouter(options: AttemptRouterOptions) {
     const { quizId } = parseInput(quizParamsSchema, request.params);
     const query = parseInput(listQuerySchema, request.query);
     const auth = getAuthContext(response);
-    const result = await service.listForQuiz(auth.userId, quizId, {
+    const result = await service.listOwned(auth.userId, {
+      quizId,
       page: query.page ?? 1,
       pageSize: query.pageSize ?? 10,
+    });
+    response.status(200).json(result satisfies ListAttemptsResponse);
+  });
+
+  router.get("/attempts", authenticate, async (request, response) => {
+    const query = parseInput(ownListQuerySchema, request.query);
+    const auth = getAuthContext(response);
+    const result = await service.listOwned(auth.userId, {
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 10,
+      ...(query.status ? { submittedOnly: true } : {}),
     });
     response.status(200).json(result satisfies ListAttemptsResponse);
   });

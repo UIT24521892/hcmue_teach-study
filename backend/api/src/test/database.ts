@@ -6,6 +6,8 @@ import { prisma } from "../lib/prisma.js";
  * database. `refresh_tokens` is deleted first because it references `users`.
  */
 export async function resetAuthTables(): Promise<void> {
+  await prisma.dailyNote.deleteMany();
+  await prisma.tag.deleteMany();
   await prisma.quiz.deleteMany();
   await prisma.document.deleteMany();
   await prisma.refreshToken.deleteMany();

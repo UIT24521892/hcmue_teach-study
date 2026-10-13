@@ -74,6 +74,8 @@ model User {
   questionRevisions QuestionRevision[] @relation("QuestionRevisionEditor")
   quizzes           Quiz[]
   quizAttempts      QuizAttempt[]
+  dailyNotes        DailyNote[]
+  tags              Tag[]
 
   @@index([role])
   @@map("users")
@@ -100,9 +102,10 @@ model Document {
   updatedAt              DateTime       @updatedAt @map("updated_at")
   deletedAt              DateTime?      @map("deleted_at")
 
-  owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   jobs      DocumentJob[]
   questions Question[]
+  noteLinks DailyNoteLink[]
 
   @@index([ownerId, createdAt])
   @@index([ownerId, checksum])
@@ -238,9 +241,10 @@ model QuizAttempt {
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
 
-  quiz    Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  answers AttemptAnswer[]
+  quiz      Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers   AttemptAnswer[]
+  noteLinks DailyNoteLink[]
 
   @@index([userId, quizId, createdAt])
   @@index([quizId, status])
@@ -261,6 +265,73 @@ model AttemptAnswer {
 
   @@unique([attemptId, position])
   @@map("attempt_answers")
+}
+
+/// One private learning-journal page per user and local calendar day. `date`
+/// is the day in the user's timezone at the time of writing (no time part).
+model DailyNote {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  date          DateTime @db.Date
+  content       String   @db.Text
+  understanding Int
+  version       Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags  DailyNoteTag[]
+  links DailyNoteLink[]
+
+  @@unique([userId, date])
+  @@map("daily_notes")
+}
+
+/// Per-user tag vocabulary; `normalized` makes "Grammar" and "grammar" one tag.
+model Tag {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  name       String
+  normalized String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes DailyNoteTag[]
+
+  @@unique([userId, normalized])
+  @@map("tags")
+}
+
+model DailyNoteTag {
+  noteId String @map("note_id")
+  tagId  String @map("tag_id")
+
+  note DailyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag  Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@index([tagId])
+  @@map("daily_note_tags")
+}
+
+/// Links a note to the author's own document or quiz attempt. Exactly one
+/// target is set (enforced by a CHECK constraint in the migration).
+model DailyNoteLink {
+  id         String   @id @default(cuid())
+  noteId     String   @map("note_id")
+  documentId String?  @map("document_id")
+  attemptId  String?  @map("attempt_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  note     DailyNote    @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  document Document?    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  attempt  QuizAttempt? @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, documentId])
+  @@unique([noteId, attemptId])
+  @@index([documentId])
+  @@index([attemptId])
+  @@map("daily_note_links")
 }
 
 /// Rotating refresh tokens. Only a SHA-256 hash of the token is persisted, so a

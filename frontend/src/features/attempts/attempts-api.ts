@@ -20,6 +20,12 @@ export function createAttemptsApi(client: ApiClient) {
         { schema: listAttemptsResponseSchema },
       );
     },
+    /** The signed-in user's submitted attempts, newest first. */
+    mine(page = 1, pageSize = 20) {
+      return client.request(`/attempts?status=submitted&page=${page}&pageSize=${pageSize}`, {
+        schema: listAttemptsResponseSchema,
+      });
+    },
     get(attemptId: string) {
       return client.request(`/attempts/${encodeURIComponent(attemptId)}`, {
         schema: attemptResponseSchema,

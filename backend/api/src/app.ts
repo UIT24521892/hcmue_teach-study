@@ -8,6 +8,7 @@ import { createAttemptRouter } from "./features/attempts/attempt.route.js";
 import { createAuthRouter } from "./features/auth/auth.route.js";
 import { createDocumentRouter } from "./features/documents/document.route.js";
 import { healthRouter } from "./features/health/health.route.js";
+import { createNoteRouter } from "./features/notes/note.route.js";
 import { createQuizRouter } from "./features/quizzes/quiz.route.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { requestContext } from "./middleware/request-context.js";
@@ -40,6 +41,7 @@ export function createApp(config: AppConfig) {
     ...config.documents,
   });
   app.use("/api/v1/documents", documentRouter);
+  app.use("/api/v1/notes", createNoteRouter({ accessTokenSecret: config.auth.accessTokenSecret }));
   // Before the quiz router: its owner-only role gate would reject learners.
   app.use("/api/v1", createAttemptRouter({ accessTokenSecret: config.auth.accessTokenSecret }));
   app.use(

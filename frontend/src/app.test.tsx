@@ -40,6 +40,20 @@ function stubSession(role: UserRole) {
       if (url.includes("/quizzes?page=")) {
         return jsonResponse({ quizzes: [], pagination: emptyPage });
       }
+      if (url.endsWith("/notes/progress")) {
+        return jsonResponse({
+          progress: {
+            timezone: "Asia/Ho_Chi_Minh",
+            today: "2026-10-13",
+            completedSessions: 12,
+            streakDays: 3,
+          },
+        });
+      }
+      if (url.includes("/notes?from=")) return jsonResponse({ notes: [] });
+      if (url.includes("/attempts?status=submitted")) {
+        return jsonResponse({ attempts: [], pagination: emptyPage });
+      }
       throw new Error(`Unexpected request: ${url}`);
     }),
   );
@@ -122,19 +136,6 @@ describe("App", () => {
       screen.getByRole("heading", { name: "Một nơi cho mọi điều muốn học." }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Tài liệu" })).toHaveAttribute("aria-current", "page");
-  });
-
-  it("saves a note without counting edits as new sessions", async () => {
-    renderApp("/notes");
-    fireEvent.change(await screen.findByLabelText("Hôm nay bạn học được gì?"), {
-      target: { value: "I learned a new word today." },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu ghi chú" }));
-    const data = JSON.parse(localStorage.getItem("mach-demo-v1") ?? "{}");
-    expect(data.notes).toHaveLength(12);
-    expect(data.notes.at(-1).content).toBe("I learned a new word today.");
-    fireEvent.click(screen.getByRole("button", { name: "Lưu ghi chú" }));
-    expect(JSON.parse(localStorage.getItem("mach-demo-v1") ?? "{}").notes).toHaveLength(12);
   });
 
   it("shows the server-verified role in settings without a preview switch", async () => {
